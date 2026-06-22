@@ -1,0 +1,287 @@
+{
+  "ICONS": {
+    "gate": "M4 21V7l8-3 8 3v14M4 21h16M9 21v-6h6v6",
+    "temple": "M3 9l9-5 9 5M5 9v8M19 9v8M5 17h14M9 17v-5M15 17v-5M12 17v-5",
+    "train": "M5 4h14v11H5zM5 9h14M9 19l-2 2M15 19l2 2M8 15v2M16 15v2",
+    "mountain": "M3 20l6-9 4 5 3-4 5 8z",
+    "fish": "M3 12c4-5 11-5 15 0-4 5-11 5-15 0zM18 12l3-2v4z",
+    "lotus": "M12 3c2 3 2 6 0 9-2-3-2-6 0-9zM12 12c3-2 6-2 9 0-3 2-6 2-9 0zM12 12c-3-2-6-2-9 0 3 2 6 2 9 0z",
+    "paw": "M5 14a2 2 0 110-4 2 2 0 010 4zM19 14a2 2 0 110-4 2 2 0 010 4zM9 9a2 2 0 110-4 2 2 0 010 4zM15 9a2 2 0 110-4 2 2 0 010 4zM12 13c-3 0-5 2-5 4a3 3 0 003 3h4a3 3 0 003-3c0-2-2-4-5-4z",
+    "coaster": "M3 19c4-10 14-10 18 0M8 13v-3M12 11V8M16 13v-3",
+    "ferris": "M12 3a9 9 0 100 18 9 9 0 000-18zM12 3v18M3 12h18",
+    "tower": "M12 4v13M8 8l4-4 4 4M9 17h6v3H9z",
+    "water": "M4 11c2-2 4-2 6 0s4 2 6 0 4-2 4-2M4 16c2-2 4-2 6 0s4 2 6 0 4-2 4-2"
+  },
+  "DEST": {
+    "thien_tien_mon": {
+      "name": "Thiên Tiên Môn",
+      "type": "Cổng chào",
+      "icon": "gate",
+      "mx": 13,
+      "my": 18
+    },
+    "au_lac": {
+      "name": "Quảng trường Âu Lạc",
+      "type": "Văn hoá",
+      "icon": "temple",
+      "mx": 25,
+      "my": 27
+    },
+    "xe_lua": {
+      "name": "Xe Lửa Cổ Tích",
+      "type": "Di chuyển",
+      "icon": "train",
+      "mx": 20,
+      "my": 44
+    },
+    "lac_canh": {
+      "name": "Lạc Cảnh Tiên Sơn",
+      "type": "Cảnh quan",
+      "icon": "mountain",
+      "mx": 33,
+      "my": 44
+    },
+    "massage_ca": {
+      "name": "Massage Cá Tiên",
+      "type": "Thư giãn",
+      "icon": "fish",
+      "mx": 42,
+      "my": 29
+    },
+    "phat_di_lac": {
+      "name": "Long Hoa Thiên Bảo",
+      "type": "Tâm linh",
+      "icon": "lotus",
+      "mx": 52,
+      "my": 19
+    },
+    "kim_lan": {
+      "name": "Kim Lân Sơn",
+      "type": "Văn hoá",
+      "icon": "temple",
+      "mx": 62,
+      "my": 31
+    },
+    "tu_linh": {
+      "name": "Tứ Linh Hội Tụ",
+      "type": "Biểu tượng",
+      "icon": "temple",
+      "mx": 50,
+      "my": 49
+    },
+    "ca_sau": {
+      "name": "Vương Quốc Cá Sấu",
+      "type": "Động vật",
+      "icon": "paw",
+      "mx": 39,
+      "my": 63
+    },
+    "thuy_cung": {
+      "name": "Thuỷ Cung Tiên Đồng",
+      "type": "Động vật",
+      "icon": "fish",
+      "mx": 52,
+      "my": 69
+    },
+    "tau_luon": {
+      "name": "Tàu Lượn Siêu Tốc",
+      "type": "Cảm giác mạnh",
+      "icon": "coaster",
+      "mx": 73,
+      "my": 44
+    },
+    "thap_roi": {
+      "name": "Tháp Rơi Tự Do",
+      "type": "Cảm giác mạnh",
+      "icon": "tower",
+      "mx": 82,
+      "my": 32
+    },
+    "vong_xoay": {
+      "name": "Vòng Xoay Vũ Trụ",
+      "type": "Cảm giác mạnh",
+      "icon": "ferris",
+      "mx": 80,
+      "my": 56
+    },
+    "ma_lau": {
+      "name": "Lâu Đài Ma",
+      "type": "Mạo hiểm",
+      "icon": "coaster",
+      "mx": 70,
+      "my": 63
+    },
+    "bien_tien_dong": {
+      "name": "Biển Tiên Đồng",
+      "type": "Công viên nước",
+      "icon": "water",
+      "sea": true,
+      "mx": 56,
+      "my": 88
+    },
+    "song_than": {
+      "name": "Hồ Tạo Sóng",
+      "type": "Công viên nước",
+      "icon": "water",
+      "sea": true,
+      "mx": 43,
+      "my": 91
+    },
+    "cau_truot": {
+      "name": "Cầu Trượt Thuỷ Tinh",
+      "type": "Công viên nước",
+      "icon": "water",
+      "sea": true,
+      "mx": 68,
+      "my": 87
+    }
+  },
+  "SEA_DEST": [
+    "bien_tien_dong",
+    "song_than",
+    "cau_truot"
+  ],
+  "COMBOS": [
+    {
+      "id": "tham_quan",
+      "name": "Combo Tham Quan",
+      "group": "NHÓM 1",
+      "accent": "#0A7C3E",
+      "soft": "#E4F1E4",
+      "audience": "Gia đình · Người lớn tuổi · Thư giãn",
+      "priceAdult": 255000,
+      "priceChild": 175000,
+      "seaAdult": 350000,
+      "seaChild": 260000,
+      "dest": [
+        "thien_tien_mon",
+        "au_lac",
+        "xe_lua",
+        "lac_canh",
+        "massage_ca",
+        "phat_di_lac",
+        "kim_lan",
+        "tu_linh",
+        "ca_sau",
+        "thuy_cung"
+      ]
+    },
+    {
+      "id": "kham_pha",
+      "name": "Combo Khám Phá",
+      "group": "NHÓM 2",
+      "accent": "#0E8F6E",
+      "soft": "#E0F0EB",
+      "audience": "Gia đình năng động · Cặp đôi",
+      "priceAdult": 320000,
+      "priceChild": 230000,
+      "seaAdult": 415000,
+      "seaChild": 310000,
+      "dest": [
+        "thien_tien_mon",
+        "xe_lua",
+        "lac_canh",
+        "massage_ca",
+        "tu_linh",
+        "kim_lan",
+        "ca_sau",
+        "thuy_cung",
+        "tau_luon",
+        "ma_lau"
+      ]
+    },
+    {
+      "id": "thu_thach",
+      "name": "Combo Thử Thách",
+      "group": "NHÓM 3",
+      "accent": "#E2571E",
+      "soft": "#FBE6DA",
+      "audience": "Nhóm bạn trẻ · Cảm giác mạnh",
+      "priceAdult": 380000,
+      "priceChild": null,
+      "seaAdult": 470000,
+      "seaChild": null,
+      "childLocked": true,
+      "dest": [
+        "thien_tien_mon",
+        "tau_luon",
+        "thap_roi",
+        "vong_xoay",
+        "ma_lau",
+        "ca_sau",
+        "lac_canh",
+        "tu_linh"
+      ]
+    }
+  ],
+  "QUIZ": [
+    {
+      "q": "Bạn đi cùng ai?",
+      "opts": [
+        {
+          "t": "Gia đình",
+          "s": {
+            "tham_quan": 2,
+            "kham_pha": 1
+          },
+          "who": "gia đình"
+        },
+        {
+          "t": "Nhóm bạn trẻ",
+          "s": {
+            "thu_thach": 2,
+            "kham_pha": 1
+          },
+          "who": "nhóm bạn"
+        },
+        {
+          "t": "Cặp đôi",
+          "s": {
+            "kham_pha": 2,
+            "tham_quan": 1
+          },
+          "who": "người thương"
+        }
+      ]
+    },
+    {
+      "q": "Bạn muốn một ngày như thế nào?",
+      "opts": [
+        {
+          "t": "Nhẹ nhàng thư giãn",
+          "s": {
+            "tham_quan": 2
+          },
+          "mood": "một ngày nhẹ nhàng thư giãn"
+        },
+        {
+          "t": "Vừa tham quan vừa chơi",
+          "s": {
+            "kham_pha": 2
+          },
+          "mood": "vừa tham quan vừa vui chơi"
+        },
+        {
+          "t": "Cảm giác mạnh",
+          "s": {
+            "thu_thach": 2
+          },
+          "mood": "những pha cảm giác mạnh"
+        }
+      ]
+    },
+    {
+      "q": "Thêm Biển Tiên Đồng (công viên nước)?",
+      "opts": [
+        {
+          "t": "Có",
+          "sea": true
+        },
+        {
+          "t": "Không",
+          "sea": false
+        }
+      ]
+    }
+  ]
+}
