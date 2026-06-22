@@ -331,9 +331,6 @@ function viewCombosShell(){
       <p>Mỗi combo có thể thêm <b>Biển Tiên Đồng</b> (công viên nước). Bấm <b>Hành trình 360°</b> để xem trước, hoặc <b>Khám phá tự do</b> trên bản đồ.</p>
     </div>
     <div id="comboGrid" class="grid"></div>
-    <footer class="fine">
-      Bản thiết kế giao diện minh hoạ — mỗi cổng tròn 360° gọi <code>open_panorama_by_id(pano_id)</code> để mở cảnh tương ứng. Hình ảnh panorama dùng placeholder, sẵn sàng gắn engine thật vào <code>#viewer</code>.
-    </footer>
   </section>`;
 }
 

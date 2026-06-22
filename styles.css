@@ -185,11 +185,7 @@ a{color:inherit}
     radial-gradient(120% 120% at 100% 100%, color-mix(in srgb,var(--teal) 12%,#fff) 0%, transparent 55%),
     #FCFEFA;
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.6), 0 14px 30px -18px rgba(10,124,62,.5);
-  animation:rise .45s ease both;position:relative;overflow:hidden;
-}
-.result::before{ /* accent spine on the left, ticket-style */
-  content:"";position:absolute;left:0;top:0;bottom:0;width:4px;
-  background:linear-gradient(180deg,var(--green),var(--lime-d));
+  animation:rise .45s ease both;position:relative;overflow:visible;
 }
 .result .stamp{
   position:absolute;top:-14px;right:14px;font-family:var(--mono);font-size:10px;font-weight:600;
@@ -419,9 +415,6 @@ a{color:inherit}
 
 /* ============ TOAST ============ */
 .toast{position:fixed;left:50%;bottom:122px;transform:translateX(-50%);z-index:200;background:var(--ink);color:#FCF8EE;padding:13px 22px;border-radius:999px;font-size:14px;font-weight:500;box-shadow:0 14px 30px rgba(0,0,0,.4);border:1.5px solid rgba(140,198,63,.4);animation:rise .3s ease both;display:flex;align-items:center;gap:9px}
-
-footer.fine{max-width:1200px;margin:30px auto 0;padding:26px clamp(16px,4vw,44px) 24px;color:var(--muted);font-size:12px;line-height:1.6;border-top:1.5px solid var(--line)}
-footer.fine code{font-family:var(--mono);color:var(--green);font-size:11.5px}
 
 /* ============ FULL-SCREEN OVERLAYS (phase 2) ============ */
 @keyframes panMove{from{background-position:0 0,0 0,0 0}to{background-position:0 0,240px 0,0 240px}}
