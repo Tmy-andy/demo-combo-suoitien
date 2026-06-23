@@ -583,8 +583,6 @@ function viewJourney(){
   const audioWave=`<span class="wave">${'<i></i>'.repeat(5)}</span>`;
 
   return `<div class="screen journey">
-    <div class="vrbg slow"></div>
-
     <!-- top bar -->
     <div class="j-top" style="display:${imm?'none':'flex'}">
       <button class="j-ghost" data-act="closeJourney">${lucide('chevron-left','currentColor',16)} Thoát</button>
@@ -603,6 +601,7 @@ function viewJourney(){
 
     <!-- stage -->
     <div class="j-stage">
+      <div class="vrbg slow"></div>
       <!-- cinematic center title -->
       <div class="cine-title" style="display:${cine?'block':'none'}">
         <div class="mono kk">Đang xem điểm ${human}/${total}</div>
