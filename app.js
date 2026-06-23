@@ -48,6 +48,7 @@ const LUCIDE = {
   play:"<path d=\"M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z\"/>",
   layers:"<path d=\"M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z\"/><path d=\"M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12\"/><path d=\"M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17\"/>",
   volume:"<path d=\"M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z\"/><path d=\"M16 9a5 5 0 0 1 0 6\"/><path d=\"M19.364 18.364a9 9 0 0 0 0-12.728\"/>",
+  volumeOff:"<path d=\"M16 9a5 5 0 0 1 .95 2.293\"/><path d=\"M19.364 5.636a9 9 0 0 1 1.889 9.96\"/><path d=\"m2 2 20 20\"/><path d=\"M7 7l-.587.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298V11\"/><path d=\"M9.828 4.172 9.797 4.204 11 3.001v3\"/>",
   film:"<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\"/><path d=\"M7 3v18\"/><path d=\"M3 7.5h4\"/><path d=\"M3 12h18\"/><path d=\"M3 16.5h4\"/><path d=\"M17 3v18\"/><path d=\"M17 7.5h4\"/><path d=\"M17 16.5h4\"/>",
   map:"<path d=\"M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z\"/><path d=\"M15 5.764v15\"/><path d=\"M9 3.236v15\"/>",
   users:"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><path d=\"M16 3.128a4 4 0 0 1 0 7.744\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/>",
@@ -197,7 +198,9 @@ function mountJourney(){
   h.innerHTML = state.journey ? viewJourney() : '';
   jEntering=false;
 }
-function openJourney(id){ stopTimer(); state.journey={comboId:id,index:0,mode:'cinematic',playing:false,immersive:false}; jEntering=true; mountJourney(); }
+function openJourney(id){ stopTimer(); state.journey={comboId:id,index:0,mode:'cinematic',playing:false,immersive:false,muted:false}; jEntering=true; mountJourney(); }
+function toggleMute(){ if(!state.journey) return; state.journey.muted=!state.journey.muted; mountJourney();
+  toast(state.journey.muted?'Đã tắt tiếng giới thiệu':'Đã bật tiếng giới thiệu'); }
 function closeJourney(){ stopTimer(); closeMap(); state.journey=null; mountJourney(); }
 function setMode(m){ if(!state.journey||state.journey.mode===m) return; state.journey.mode=m; mountJourney(); }
 function jNext(){ if(!state.journey) return; const pl=playlist(state.journey); jGoto(Math.min(state.journey.index+1,pl.length-1)); }
@@ -335,6 +338,7 @@ document.addEventListener('click', e=>{
     case 'jPrev': jPrev(); break;
     case 'jGoto': jGoto(+t.dataset.i); break;
     case 'jPlay': togglePlay(); break;
+    case 'jMute': toggleMute(); break;
     case 'immersive': toggleImmersive(); break;
     case 'audio': toast('Đang phát giới thiệu: '+DEST[id].name); break;
     case 'adultAdd': qty('adult',1); break;
@@ -892,13 +896,6 @@ function viewJourney(){
         <div class="mini-legend"><span><span class="sw" style="background:var(--lime)"></span>Hiện tại</span><span><span class="sw" style="background:var(--orange)"></span>Sắp tới</span></div>
       </div>
 
-      <!-- cinematic audio -->
-      <div class="audiobox" style="display:${cine&&!imm?'flex':'none'}">
-        <span class="spk">${lucide('volume','var(--lime)',20)}</span>
-        <div><div class="mono kk">Đang giới thiệu</div><div class="nm">${esc(cur.name)}</div></div>
-        ${audioWave}
-      </div>
-
       <!-- map mode -->
       <div class="mapmode" style="display:${map&&!imm?'flex':'none'}">
         <div class="itinbox">
@@ -937,10 +934,21 @@ function viewJourney(){
 
     <!-- dock: control cluster + filmstrip of stops -->
     <div class="j-dock" style="display:${(cine||map)&&!imm?'flex':'none'}">
-      <div class="j-controls">
-        <button class="j-circ" data-act="jPrev" title="Điểm trước">${lucide('chevron-left','currentColor',20)}</button>
-        <button class="j-play" data-act="jPlay">${j.playing?lucide('pause','currentColor',18,'currentColor'):lucide('play','currentColor',18,'currentColor')}<span>${j.playing?'Dừng':'Tự động'}</span></button>
-        <button class="j-circ" data-act="jNext" title="Điểm sau">${lucide('chevron-right','currentColor',20)}</button>
+      <div class="j-ctrl-row">
+        <!-- cinematic audio: far left · click to mute/unmute the narration -->
+        <button class="audiobox${j.muted?' muted':''}" data-act="jMute"
+          title="${j.muted?'Bật tiếng giới thiệu':'Tắt tiếng giới thiệu'}"
+          style="display:${cine&&!imm?'flex':'none'}">
+          <span class="spk">${lucide(j.muted?'volumeOff':'volume',j.muted?'#8FB29C':'var(--lime)',20)}</span>
+          <div><div class="mono kk">${j.muted?'Đã tắt tiếng':'Đang giới thiệu'}</div><div class="nm">${esc(cur.name)}</div></div>
+          ${audioWave}
+        </button>
+        <div class="j-controls">
+          <button class="j-circ" data-act="jPrev" title="Điểm trước">${lucide('chevron-left','currentColor',20)}</button>
+          <button class="j-play" data-act="jPlay">${j.playing?lucide('pause','currentColor',18,'currentColor'):lucide('play','currentColor',18,'currentColor')}<span>${j.playing?'Dừng':'Tự động'}</span></button>
+          <button class="j-circ" data-act="jNext" title="Điểm sau">${lucide('chevron-right','currentColor',20)}</button>
+        </div>
+        <div class="j-full-end"><button class="j-circ ghost j-full" data-act="immersive" title="Toàn cảnh">${lucide('maximize','currentColor',17)}</button></div>
       </div>
       <div class="j-strip-wrap">
         <div class="j-counter mono"><b>${String(human).padStart(2,'0')}</b><span>/ ${String(total).padStart(2,'0')}</span></div>
@@ -949,7 +957,6 @@ function viewJourney(){
           ${timeline}
         </div>
       </div>
-      <button class="j-circ ghost j-full" data-act="immersive" title="Toàn cảnh">${lucide('maximize','currentColor',17)}</button>
     </div>
   </div>`;
 }
