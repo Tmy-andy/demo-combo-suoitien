@@ -543,13 +543,31 @@ svg{vertical-align:-0.15em}
 .dest-grid{flex:1;overflow:auto;padding:14px 18px 18px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;align-content:start}
 .dest-grid .destrow{margin:0}
 @media(max-width:680px){
-  .sheet{flex-direction:column;width:min(560px,100%);max-height:88vh;-webkit-mask:none;mask:none}
-  .ticket-stub{width:auto;flex-direction:row;justify-content:flex-start;text-align:left;gap:14px;padding:16px 18px}
-  .ticket-stub h3{font-size:19px}
+  .scrim{padding:16px;align-items:flex-end}
+  .sheet{
+    flex-direction:column;width:100%;max-height:92vh;
+    border-radius:22px;
+    /* notch ngang: 2 bán nguyệt cắt ở trái/phải tại đường xé stub */
+    --seam:124px;--notch:20px;
+    -webkit-mask:
+      radial-gradient(circle var(--notch) at 0 var(--seam),#0000 calc(var(--notch) - 1px),#000 var(--notch)) no-repeat,
+      radial-gradient(circle var(--notch) at 100% var(--seam),#0000 calc(var(--notch) - 1px),#000 var(--notch)) no-repeat;
+    -webkit-mask-composite:source-in;
+    mask:
+      radial-gradient(circle var(--notch) at 0 var(--seam),#0000 calc(var(--notch) - 1px),#000 var(--notch)) no-repeat,
+      radial-gradient(circle var(--notch) at 100% var(--seam),#0000 calc(var(--notch) - 1px),#000 var(--notch)) no-repeat;
+    mask-composite:intersect;
+  }
+  .ticket-stub{
+    width:auto;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;gap:6px;padding:22px 20px 28px;
+  }
+  .ticket-stub h3{font-size:22px}
+  .ticket-stub .cnt{display:block}
   .ticket-stub .qrlb{display:none}
-  .stub-qr{margin-left:auto;padding:7px}
-  .ticket-main{border-left:none}
-  .dest-grid{grid-template-columns:1fr}
+  .stub-qr{display:none}
+  .ticket-main{border-left:none;border-top:1.5px dashed var(--line);min-height:0;overflow:hidden}
+  .dest-grid{grid-template-columns:1fr;overflow-y:auto;-webkit-overflow-scrolling:touch}
 }
 .destrow{display:flex;align-items:center;gap:13px;padding:12px;border-radius:12px;background:var(--card);border:1.5px solid var(--line);margin-top:8px}
 .destrow.sea{background:#E5F0EC;border-color:#BBD9CF}
