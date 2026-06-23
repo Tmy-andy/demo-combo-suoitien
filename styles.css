@@ -196,6 +196,14 @@ a{color:inherit}
 .result p{font-size:13.5px;color:var(--ink-soft);line-height:1.6;margin:8px 0 0}
 .result .go{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:16px}
 
+/* ============ ICONS (Lucide) ============ */
+/* keep inline icons optically centered with adjacent text */
+svg{vertical-align:-0.15em}
+.tag-mono,.morelink,.open,.piplabel,.j-ghost,.br,.tl-actions .btn,.j-ghost-btn{
+  display:inline-flex;align-items:center;gap:6px}
+.stepper button,.xbtn,.fam-circ{display:inline-flex;align-items:center;justify-content:center}
+.stepper button svg,.xbtn svg,.fam-circ svg{vertical-align:middle}
+
 /* ============ BUTTONS ============ */
 .btn{cursor:pointer;border:none;border-radius:9px;font-weight:600;font-size:14px;padding:12px 20px;
   display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:.16s;line-height:1}

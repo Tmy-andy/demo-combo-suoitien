@@ -22,8 +22,55 @@ const fmt = n => Number(n).toLocaleString('vi-VN') + 'đ';
 const comboOf = id => COMBOS.find(c=>c.id===id);
 const priceOf = (c,sea) => sea ? {adult:c.seaAdult,child:c.seaChild} : {adult:c.priceAdult,child:c.priceChild};
 const esc = s => String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
-const svgIcon = (path,stroke,sz=16) =>
-  `<svg viewBox="0 0 24 24" width="${sz}" height="${sz}" fill="none" stroke="${stroke}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"></path></svg>`;
+/* Official Lucide icon bodies (https://lucide.dev), keyed by local name.
+   Values are the exact inner markup from the `lucide` npm package, dropped
+   into a shared 24×24 stroke wrapper by lucide(). Local→Lucide mapping:
+   gate=DoorOpen temple=Landmark train=TrainFront mountain=Mountain fish=Fish
+   lotus=Flower paw=PawPrint coaster=TrainTrack ferris=FerrisWheel
+   tower=TowerControl water=Waves play=Play layers=Layers volume=Volume2
+   film=Film map=Map users=Users navigation=Navigation pin=MapPin
+   sparkle=Sparkles check=Check x=X plus=Plus minus=Minus
+   arrow-*=Arrow* chevron-*=Chevron* pause=Pause maximize=Maximize */
+const LUCIDE = {
+  // destination icons (official Lucide paths)
+  gate:"<path d=\"M11 20H2\"/><path d=\"M11 4.562v16.157a1 1 0 0 0 1.242.97L19 20V5.562a2 2 0 0 0-1.515-1.94l-4-1A2 2 0 0 0 11 4.561z\"/><path d=\"M11 4H8a2 2 0 0 0-2 2v14\"/><path d=\"M14 12h.01\"/><path d=\"M22 20h-3\"/>",
+  temple:"<path d=\"M10 18v-7\"/><path d=\"M11.119 2.205a2 2 0 0 1 1.762 0l7.84 3.846A.5.5 0 0 1 20.5 7h-17a.5.5 0 0 1-.22-.949z\"/><path d=\"M14 18v-7\"/><path d=\"M18 18v-7\"/><path d=\"M3 22h18\"/><path d=\"M6 18v-7\"/>",
+  train:"<path d=\"M8 3.1V7a4 4 0 0 0 8 0V3.1\"/><path d=\"m9 15-1-1\"/><path d=\"m15 15 1-1\"/><path d=\"M9 19c-2.8 0-5-2.2-5-5v-4a8 8 0 0 1 16 0v4c0 2.8-2.2 5-5 5Z\"/><path d=\"m8 19-2 3\"/><path d=\"m16 19 2 3\"/>",
+  mountain:"<path d=\"m8 3 4 8 5-5 5 15H2L8 3z\"/>",
+  fish:"<path d=\"M6.5 12c.94-3.46 4.94-6 8.5-6 3.56 0 6.06 2.54 7 6-.94 3.47-3.44 6-7 6s-7.56-2.53-8.5-6Z\"/><path d=\"M18 12v.5\"/><path d=\"M16 17.93a9.77 9.77 0 0 1 0-11.86\"/><path d=\"M7 10.67C7 8 5.58 5.97 2.73 5.5c-1 1.5-1 5 .23 6.5-1.24 1.5-1.24 5-.23 6.5C5.58 18.03 7 16 7 13.33\"/><path d=\"M10.46 7.26C10.2 5.88 9.17 4.24 8 3h5.8a2 2 0 0 1 1.98 1.67l.23 1.4\"/><path d=\"m16.01 17.93-.23 1.4A2 2 0 0 1 13.8 21H9.5a5.96 5.96 0 0 0 1.49-3.98\"/>",
+  lotus:"<circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5\"/><path d=\"M12 7.5V9\"/><path d=\"M7.5 12H9\"/><path d=\"M16.5 12H15\"/><path d=\"M12 16.5V15\"/><path d=\"m8 8 1.88 1.88\"/><path d=\"M14.12 9.88 16 8\"/><path d=\"m8 16 1.88-1.88\"/><path d=\"M14.12 14.12 16 16\"/>",
+  paw:"<circle cx=\"11\" cy=\"4\" r=\"2\"/><circle cx=\"18\" cy=\"8\" r=\"2\"/><circle cx=\"20\" cy=\"16\" r=\"2\"/><path d=\"M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z\"/>",
+  coaster:"<path d=\"M2 17 17 2\"/><path d=\"m2 14 8 8\"/><path d=\"m5 11 8 8\"/><path d=\"m8 8 8 8\"/><path d=\"m11 5 8 8\"/><path d=\"m14 2 8 8\"/><path d=\"M7 22 22 7\"/>",
+  ferris:"<circle cx=\"12\" cy=\"12\" r=\"2\"/><path d=\"M12 2v4\"/><path d=\"m6.8 15-3.5 2\"/><path d=\"m20.7 7-3.5 2\"/><path d=\"M6.8 9 3.3 7\"/><path d=\"m20.7 17-3.5-2\"/><path d=\"m9 22 3-8 3 8\"/><path d=\"M8 22h8\"/><path d=\"M18 18.7a9 9 0 1 0-12 0\"/>",
+  tower:"<path d=\"M18.2 12.27 20 6H4l1.8 6.27a1 1 0 0 0 .95.73h10.5a1 1 0 0 0 .96-.73Z\"/><path d=\"M8 13v9\"/><path d=\"M16 22v-9\"/><path d=\"m9 6 1 7\"/><path d=\"m15 6-1 7\"/><path d=\"M12 6V2\"/><path d=\"M13 2h-2\"/>",
+  water:"<path d=\"M2 12q2.5 2 5 0t5 0 5 0 5 0\"/><path d=\"M2 19q2.5 2 5 0t5 0 5 0 5 0\"/><path d=\"M2 5q2.5 2 5 0t5 0 5 0 5 0\"/>",
+  // ui / control icons (official Lucide paths)
+  play:"<path d=\"M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z\"/>",
+  layers:"<path d=\"M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z\"/><path d=\"M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12\"/><path d=\"M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17\"/>",
+  volume:"<path d=\"M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z\"/><path d=\"M16 9a5 5 0 0 1 0 6\"/><path d=\"M19.364 18.364a9 9 0 0 0 0-12.728\"/>",
+  film:"<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\"/><path d=\"M7 3v18\"/><path d=\"M3 7.5h4\"/><path d=\"M3 12h18\"/><path d=\"M3 16.5h4\"/><path d=\"M17 3v18\"/><path d=\"M17 7.5h4\"/><path d=\"M17 16.5h4\"/>",
+  map:"<path d=\"M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z\"/><path d=\"M15 5.764v15\"/><path d=\"M9 3.236v15\"/>",
+  users:"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><path d=\"M16 3.128a4 4 0 0 1 0 7.744\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/>",
+  navigation:"<polygon points=\"3 11 22 2 13 21 11 13 3 11\"/>",
+  pin:"<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\"/><circle cx=\"12\" cy=\"10\" r=\"3\"/>",
+  sparkle:"<path d=\"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z\"/><path d=\"M20 2v4\"/><path d=\"M22 4h-4\"/><circle cx=\"4\" cy=\"20\" r=\"2\"/>",
+  check:"<path d=\"M20 6 9 17l-5-5\"/>",
+  x:"<path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/>",
+  plus:"<path d=\"M5 12h14\"/><path d=\"M12 5v14\"/>",
+  minus:"<path d=\"M5 12h14\"/>",
+  "arrow-down":"<path d=\"M12 5v14\"/><path d=\"m19 12-7 7-7-7\"/>",
+  "arrow-right":"<path d=\"M5 12h14\"/><path d=\"m12 5 7 7-7 7\"/>",
+  "arrow-left":"<path d=\"m12 19-7-7 7-7\"/><path d=\"M19 12H5\"/>",
+  "chevron-left":"<path d=\"m15 18-6-6 6-6\"/>",
+  "chevron-right":"<path d=\"m9 18 6-6-6-6\"/>",
+  pause:"<rect x=\"14\" y=\"3\" width=\"5\" height=\"18\" rx=\"1\"/><rect x=\"5\" y=\"3\" width=\"5\" height=\"18\" rx=\"1\"/>",
+  maximize:"<path d=\"M8 3H5a2 2 0 0 0-2 2v3\"/><path d=\"M21 8V5a2 2 0 0 0-2-2h-3\"/><path d=\"M3 16v3a2 2 0 0 0 2 2h3\"/><path d=\"M16 21h3a2 2 0 0 0 2-2v-3\"/>"
+};
+/* render a Lucide icon by name into the shared stroke wrapper */
+const lucide = (name,stroke,sz=16,fill='none') =>
+  `<svg viewBox="0 0 24 24" width="${sz}" height="${sz}" fill="${fill}" stroke="${stroke}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${LUCIDE[name]||''}</svg>`;
+/* destination icons now resolve through Lucide too: ICONS[d.icon] is a Lucide key */
+const svgIcon = (name,stroke,sz=16) => lucide(name,stroke,sz);
 /* deterministic ticket serial from id */
 const serial = id => 'ST-' + id.toUpperCase().replace(/[^A-Z]/g,'').slice(0,3).padEnd(3,'X') + '·' +
   (id.length*37 % 900 + 100);
@@ -159,7 +206,7 @@ document.addEventListener('click', e=>{
     case 'jGoto': jGoto(+t.dataset.i); break;
     case 'jPlay': togglePlay(); break;
     case 'immersive': toggleImmersive(); break;
-    case 'audio': toast('🔊 Đang phát giới thiệu: '+DEST[id].name); break;
+    case 'audio': toast('Đang phát giới thiệu: '+DEST[id].name); break;
     case 'adultAdd': qty('adult',1); break;
     case 'adultSub': qty('adult',-1); break;
     case 'childAdd': if(!comboOf(state.selectedId||'')?.childLocked) qty('child',1); break;
@@ -210,7 +257,7 @@ function viewQuizBody(){
       <h3 class="serif">${esc(c.name)}</h3>
       <p>${esc(reason)}</p>
       <div class="go">
-        <button class="btn btn-fill" data-act="viewRec">Xem combo này ↓</button>
+        <button class="btn btn-fill" data-act="viewRec">Xem combo này ${lucide('arrow-down','currentColor',14)}</button>
         <span class="serif" style="font-size:18px;color:var(--green-d)">${fmt(p.adult)} <span style="font-size:12px;color:var(--muted);font-family:'Be Vietnam Pro'">/ người lớn</span></span>
       </div>
     </div>`;
@@ -225,7 +272,7 @@ function viewQuizShell(){
     <div class="stripe top"></div>
     <div class="ticket-head">
       <div class="kick">
-        <span class="tag-mono">✦ Bộ máy gợi ý</span>
+        <span class="tag-mono">${lucide('sparkle','currentColor',13)} Bộ máy gợi ý</span>
         <span class="serial">${serial('quiz')}</span>
       </div>
       <h2 class="serif">Chọn nhanh — chúng tôi tính giúp</h2>
@@ -271,7 +318,7 @@ function viewCombo(c){
   const hl=c.dest.slice(0,4).map(id=>{
     const d=DEST[id];
     return `<div class="hl-item">
-      <span class="hl-ic">${svgIcon(ICONS[d.icon],c.accent,15)}</span>
+      <span class="hl-ic">${svgIcon(d.icon,c.accent,15)}</span>
       <span style="min-width:0"><span class="hl-nm">${esc(d.name)}</span><span class="hl-ty">${esc(d.type)}</span></span>
     </div>`;
   }).join('');
@@ -283,7 +330,7 @@ function viewCombo(c){
     <!-- TOP STUB · cuống (xé khi chọn) -->
     <div class="tk-top tear-stub">
       <span class="bl">Vé Combo · ${esc(c.group)}</span>
-      <span class="br">${rec?'✦ Gợi ý cho bạn':serial(c.id)}</span>
+      <span class="br">${rec?lucide('sparkle','currentColor',12)+' Gợi ý cho bạn':serial(c.id)}</span>
     </div>
 
     <!-- MIDDLE BODY -->
@@ -306,17 +353,17 @@ function viewCombo(c){
         <label class="addon-inline ${sea?'on':''}" data-act="sea" data-id="${c.id}">
           <span class="toggle"><span class="knob"></span></span>Thêm Biển Tiên Đồng
         </label>
-        <button class="morelink" data-act="sheet" data-id="${c.id}">+${total-4} điểm · Chi tiết →</button>
+        <button class="morelink" data-act="sheet" data-id="${c.id}">+${total-4} điểm · Chi tiết ${lucide('arrow-right','currentColor',13)}</button>
       </div>
     </div>
 
     <!-- BOTTOM STUB · nút bấm -->
     <div class="tk-foot">
       <div class="pair">
-        <button class="btn btn-line" style="color:${c.accent}" data-act="journey" data-id="${c.id}">${svgIcon('M8 5v14l11-7z',c.accent,13).replace('fill="none"','fill="'+c.accent+'"')}Hành trình 360°</button>
-        <button class="btn btn-ghost" data-act="explore" data-id="${c.id}">${svgIcon('M9 4l-6 3v13l6-3 6 3 6-3V4l-6 3-6-3zM9 4v13M15 7v13','#6E7A6C',14)}Khám phá</button>
+        <button class="btn btn-line" style="color:${c.accent}" data-act="journey" data-id="${c.id}">${lucide('play',c.accent,13,c.accent)}Hành trình 360°</button>
+        <button class="btn btn-ghost" data-act="explore" data-id="${c.id}">${lucide('layers','#6E7A6C',14)}Khám phá</button>
       </div>
-      <button class="btn cta ${sel?'btn-ink':'btn-fill'}" style="${sel?'':'background:'+c.accent}" data-act="select" data-id="${c.id}">${sel?'✓ Đang chọn combo này':'Chọn combo này'}</button>
+      <button class="btn cta ${sel?'btn-ink':'btn-fill'}" style="${sel?'':'background:'+c.accent}" data-act="select" data-id="${c.id}">${sel?lucide('check','currentColor',15)+' Đang chọn combo này':'Chọn combo này'}</button>
     </div>
   </article>`;
 }
@@ -356,15 +403,15 @@ function viewBuybar(){
       <div class="buy-right">
         <div class="stepper">
           <span class="cap">Người lớn</span>
-          <button data-act="adultSub">−</button>
+          <button data-act="adultSub">${lucide('minus','currentColor',16)}</button>
           <span class="v">${state.adults}</span>
-          <button data-act="adultAdd">+</button>
+          <button data-act="adultAdd">${lucide('plus','currentColor',16)}</button>
         </div>
         <div class="stepper" style="opacity:${childLocked?.4:1}">
           <span class="cap">Trẻ em</span>
-          <button data-act="childSub">−</button>
+          <button data-act="childSub">${lucide('minus','currentColor',16)}</button>
           <span class="v">${children}</span>
-          <button data-act="childAdd">+</button>
+          <button data-act="childAdd">${lucide('plus','currentColor',16)}</button>
         </div>
         <div class="total">
           <div class="cap">Tổng tạm tính</div>
@@ -383,7 +430,7 @@ function viewSheet(){
   const rows=ids.map(id=>{
     const d=DEST[id];
     return `<div class="destrow ${d.sea?'sea':''}">
-      <span class="ic">${svgIcon(ICONS[d.icon],d.sea?'#0E7E85':c.accent,19)}</span>
+      <span class="ic">${svgIcon(d.icon,d.sea?'#0E7E85':c.accent,19)}</span>
       <div style="flex:1"><div class="nm">${esc(d.name)}</div><div class="ty">${esc(d.type)}</div></div>
       <button class="portal" data-act="portal" data-id="${id}" title="Xem 360°"><span>360°</span></button>
     </div>`;
@@ -403,7 +450,7 @@ function viewSheet(){
             <div class="mhd">Điểm đến trong combo</div>
             <div class="msub">Chạm cổng 360° để xem trước từng nơi</div>
           </div>
-          <button class="xbtn" data-act="closeSheet">✕</button>
+          <button class="xbtn" data-act="closeSheet">${lucide('x','currentColor',18)}</button>
         </div>
         <div class="dest-grid">${rows}</div>
       </div>
@@ -415,12 +462,8 @@ function viewToast(){
   return state.toast ? `<div class="toast">${esc(state.toast)}</div>` : '';
 }
 
-/* ---- mode icons (SVG, no emoji) ---- */
-const MODE_IC = {
-  cinematic:'M4 5h16v14H4zM4 9h16M9 5v14M15 5v14',
-  map:'M12 21a9 9 0 100-18 9 9 0 000 18zM15.5 8.5l-2 5-5 2 2-5z',
-  family:'M9 11a3 3 0 100-6 3 3 0 000 6zM17 10.5a2.4 2.4 0 100-4.8 2.4 2.4 0 000 4.8zM3 20c0-3 2.6-5 6-5s6 2 6 5M15.5 20c0-2 .8-3.6 2-4.4'
-};
+/* ---- mode icons (Lucide names) ---- */
+const MODE_IC = { cinematic:'film', map:'map', family:'users' };
 
 /* ===================== VR VIEWER ===================== */
 function viewVR(){
@@ -434,7 +477,7 @@ function viewVR(){
       <div style="font-size:13px;color:var(--lime)">${esc(d.type)}</div>
       <div class="panocode mono">pano_${esc(state.vr.id)}</div>
       <p class="vr-note">Placeholder cảnh 360° — engine 3DVista sẽ render đè vào <b style="color:var(--lime)">#viewer</b> trong cùng cửa sổ.</p>
-      <button class="btn ghost-d" data-act="closeVR">‹ Quay lại combo</button>
+      <button class="btn ghost-d" data-act="closeVR">${lucide('chevron-left','currentColor',16)} Quay lại combo</button>
     </div>
   </div>`;
 }
@@ -448,7 +491,7 @@ function viewExplore(){
   const pins=ids.map(id=>{
     const d=DEST[id];
     return `<button class="mappin ${d.sea?'sea':''}" data-act="portal" data-id="${id}" title="${esc(d.name)}" style="left:${d.mx}%;top:${d.my}%">
-      <span class="head">${svgIcon(ICONS[d.icon],'#fff',15)}</span>
+      <span class="head">${svgIcon(d.icon,'#fff',15)}</span>
       <span class="lab">${esc(d.name)}</span>
     </button>`;
   }).join('');
@@ -456,9 +499,9 @@ function viewExplore(){
   const tiles=ids.map(id=>{
     const d=DEST[id];
     return `<button class="tile ${d.sea?'sea':''}" data-act="portal" data-id="${id}">
-      <span class="ic">${svgIcon(ICONS[d.icon],d.sea?'#0E7E85':'#0A7C3E',19)}</span>
+      <span class="ic">${svgIcon(d.icon,d.sea?'#0E7E85':'#0A7C3E',19)}</span>
       <span><span class="nm">${esc(d.name)}</span><span class="ty">${esc(d.type)}</span></span>
-      <span class="open mono">Mở 360° →</span>
+      <span class="open mono">Mở 360° ${lucide('arrow-right','currentColor',13)}</span>
     </button>`;
   }).join('');
 
@@ -468,7 +511,7 @@ function viewExplore(){
         <div class="overline" style="color:var(--green)">Khám phá tự do · ${esc(c.group)}</div>
         <h2 class="serif" style="font-size:clamp(20px,2.6vw,26px);color:var(--green-d);margin-top:4px">Bản đồ cõi tiên — chạm điểm bất kỳ để mở 360°</h2>
       </div>
-      <button class="btn btn-ghost" data-act="closeExplore">‹ Quay lại</button>
+      <button class="btn btn-ghost" data-act="closeExplore">${lucide('chevron-left','currentColor',16)} Quay lại</button>
     </div>
     <div class="exp-wrap">
       <div class="mapbox">
@@ -544,7 +587,7 @@ function viewJourney(){
 
     <!-- top bar -->
     <div class="j-top" style="display:${imm?'none':'flex'}">
-      <button class="j-ghost" data-act="closeJourney">‹ Thoát</button>
+      <button class="j-ghost" data-act="closeJourney">${lucide('chevron-left','currentColor',16)} Thoát</button>
       <div class="j-title">
         <div class="mono kk">${esc(c.group)} · Hành trình 360°</div>
         <div class="serif nm">${esc(c.name)}</div>
@@ -555,7 +598,7 @@ function viewJourney(){
     <!-- mode tabs -->
     <div class="j-tabs" style="display:${imm?'none':'flex'}">
       ${[['cinematic','Điện ảnh'],['map','Bản đồ'],['family','Gia đình']].map(([m,lab])=>
-        `<button class="j-tab ${j.mode===m?'on':''}" data-act="mode" data-mode="${m}">${svgIcon(MODE_IC[m],j.mode===m?'var(--forest-2)':'#CFE3D2',15)}${lab}</button>`).join('')}
+        `<button class="j-tab ${j.mode===m?'on':''}" data-act="mode" data-mode="${m}">${lucide(MODE_IC[m],j.mode===m?'var(--forest-2)':'#CFE3D2',15)}${lab}</button>`).join('')}
     </div>
 
     <!-- stage -->
@@ -581,7 +624,7 @@ function viewJourney(){
 
       <!-- cinematic audio -->
       <div class="audiobox" style="display:${cine&&!imm?'flex':'none'}">
-        <span class="spk">${svgIcon('M4 9v6h4l5 4V5L8 9H4zM16 8a4 4 0 010 8',' var(--lime)',20)}</span>
+        <span class="spk">${lucide('volume','var(--lime)',20)}</span>
         <div><div class="mono kk">Đang giới thiệu</div><div class="nm">${esc(cur.name)}</div></div>
         ${audioWave}
       </div>
@@ -601,7 +644,7 @@ function viewJourney(){
             <polyline points="${doneRoute}" fill="none" stroke="#8CC63F" stroke-width="1.1"></polyline>
           </svg>
           ${bigPins}
-          <div class="pip"><div class="pipbg"></div><div class="piplabel">📍 ${esc(cur.name)}</div></div>
+          <div class="pip"><div class="pipbg"></div><div class="piplabel">${lucide('pin','currentColor',14)} ${esc(cur.name)}</div></div>
         </div>
       </div>
 
@@ -610,16 +653,16 @@ function viewJourney(){
         <div class="mono" style="font-size:16px;letter-spacing:.06em;color:var(--lime);font-weight:600">Điểm ${human} / ${total}</div>
         <div class="serif famname">${esc(cur.name)}</div>
         <div class="famtype">${esc(cur.type)}</div>
-        <button class="fam-audio" data-act="audio" data-id="${curId}">${svgIcon('M4 9v6h4l5 4V5L8 9H4zM16 8a4 4 0 010 8','var(--forest-2)',22)} Nghe giới thiệu</button>
+        <button class="fam-audio" data-act="audio" data-id="${curId}">${lucide('volume','var(--forest-2)',22)} Nghe giới thiệu</button>
         <div class="fam-nav">
-          <button class="fam-circ ghost" data-act="jPrev">‹</button>
+          <button class="fam-circ ghost" data-act="jPrev">${lucide('chevron-left','currentColor',32)}</button>
           <span class="mono" style="font-size:14px;color:#9DBCA9;min-width:90px;text-align:center">Điểm trước · sau</span>
-          <button class="fam-circ fill" data-act="jNext">›</button>
+          <button class="fam-circ fill" data-act="jNext">${lucide('chevron-right','currentColor',32)}</button>
         </div>
       </div>
 
       <!-- immersive FAB -->
-      <button class="j-fab" style="display:${imm?'flex':'none'}" data-act="immersive">⤢</button>
+      <button class="j-fab" style="display:${imm?'flex':'none'}" data-act="immersive">${lucide('maximize','currentColor',22)}</button>
     </div>
 
     <!-- timeline -->
@@ -627,10 +670,10 @@ function viewJourney(){
       <div class="tl-bar"><span class="mono" style="font-size:12px;color:#9DBCA9">${human} / ${total}</span><div class="tl-track"><div class="tl-fill" style="width:${progress}"></div></div></div>
       <div class="tl-steps">${timeline}</div>
       <div class="tl-actions">
-        <button class="btn" style="background:var(--green);color:#fff" data-act="jPlay">${j.playing?'⏸ Tạm dừng':'▶ Tự động'}</button>
-        <button class="j-ghost-btn" data-act="jPrev">‹ Trước</button>
-        <button class="j-ghost-btn" data-act="jNext">Tiếp ›</button>
-        <button class="j-ghost-btn" style="color:var(--lime)" data-act="immersive">⤢ Toàn cảnh</button>
+        <button class="btn" style="background:var(--green);color:#fff" data-act="jPlay">${j.playing?lucide('pause','currentColor',14,'currentColor')+' Tạm dừng':lucide('play','currentColor',14,'currentColor')+' Tự động'}</button>
+        <button class="j-ghost-btn" data-act="jPrev">${lucide('chevron-left','currentColor',15)} Trước</button>
+        <button class="j-ghost-btn" data-act="jNext">Tiếp ${lucide('chevron-right','currentColor',15)}</button>
+        <button class="j-ghost-btn" style="color:var(--lime)" data-act="immersive">${lucide('maximize','currentColor',15)} Toàn cảnh</button>
       </div>
     </div>
   </div>`;
