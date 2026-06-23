@@ -499,7 +499,12 @@ svg{vertical-align:-0.15em}
 .hotspot.d{animation-delay:.8s}
 
 .minimap{position:absolute;top:clamp(12px,3vh,24px);right:clamp(12px,3vw,24px);width:clamp(150px,20vw,250px);
-  background:rgba(8,48,28,.78);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px;z-index:5;backdrop-filter:blur(6px)}
+  background:rgba(8,48,28,.78);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px;z-index:5;backdrop-filter:blur(6px);
+  cursor:pointer;transition:transform .18s,border-color .18s,box-shadow .18s}
+.minimap:hover{transform:translateY(-2px);border-color:rgba(140,198,63,.55);box-shadow:0 10px 26px rgba(0,0,0,.35)}
+.mini-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.mini-head svg{opacity:.7}
+.minimap:hover .mini-head svg{opacity:1}
 .minibox{position:relative;width:100%;aspect-ratio:100/68;border-radius:10px;overflow:hidden;background:linear-gradient(160deg,#0B3D24,#0A7C3E)}
 .minidot{position:absolute;transform:translate(-50%,-50%);width:9px;height:9px;border-radius:50%;background:var(--orange);border:1.5px solid #fff}
 .minidot.active{width:13px;height:13px;background:var(--lime);box-shadow:0 0 0 4px rgba(140,198,63,.4);animation:pulse 2s infinite}
@@ -532,6 +537,29 @@ svg{vertical-align:-0.15em}
 .pip{position:absolute;right:12px;bottom:12px;width:clamp(120px,16vw,180px);aspect-ratio:16/10;border-radius:12px;overflow:hidden;border:2px solid var(--lime);box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .pipbg{position:absolute;inset:0;background:radial-gradient(120% 80% at 50% 20%,#2FA34F,var(--forest-2))}
 .piplabel{position:absolute;left:0;right:0;bottom:0;padding:6px 8px;background:linear-gradient(transparent,rgba(0,0,0,.6));font-size:10.5px;font-weight:600;color:#fff}
+
+/* expanded map modal — own fade-in so the VR backdrop never restarts */
+@keyframes mapFade{from{opacity:0}to{opacity:1}}
+@keyframes mapPop{from{opacity:0;transform:scale(.97) translateY(8px)}to{opacity:1;transform:none}}
+.map-scrim{position:fixed;inset:0;z-index:140;display:flex;align-items:center;justify-content:center;
+  padding:clamp(14px,3vw,40px);background:rgba(3,12,7,.66);backdrop-filter:blur(4px);animation:mapFade .22s ease both}
+.map-modal{position:relative;display:flex;flex-direction:column;width:min(1000px,100%);max-height:90vh;overflow:hidden;
+  background:#05130C;border:1px solid rgba(255,255,255,.12);border-radius:20px;box-shadow:0 30px 70px rgba(0,0,0,.55);animation:mapPop .26s cubic-bezier(.2,.7,.3,1) both}
+.map-mhead{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:16px clamp(16px,3vw,24px);
+  border-bottom:1px solid rgba(255,255,255,.07)}
+.map-mtitle{font-size:18px;color:#FCF8EE;margin-top:3px}
+.map-mhead .xbtn{flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:10px;cursor:pointer;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#F4EEDF}
+.map-mhead .xbtn:hover{background:rgba(255,255,255,.16)}
+.mapmode-modal{position:relative;inset:auto;display:flex;flex:1;min-height:0;flex-wrap:nowrap;
+  gap:clamp(12px,2vw,20px);padding:clamp(14px,3vw,22px);overflow:hidden}
+.mapmode-modal .itinbox{align-self:stretch;max-height:100%}
+.mapmode-modal .bigmap{flex:1;min-width:0;align-self:stretch}
+@media(max-width:640px){
+  .mapmode-modal{flex-direction:column}
+  .mapmode-modal .itinbox{width:100%;align-self:auto;max-height:32vh}
+  .mapmode-modal .bigmap{align-self:auto;min-height:300px}
+}
 
 .fammode{position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;text-align:center;z-index:4;background:rgba(8,48,28,.45);padding:24px}
 .famname{font-size:clamp(34px,6vw,58px);color:#fff;margin:14px 0 8px;text-shadow:0 2px 24px rgba(0,0,0,.5)}

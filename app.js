@@ -158,7 +158,7 @@ function openExplore(id){ setState({exploreId:id||state.selectedId||state.recId|
 function closeExplore(){ setState({exploreId:null}); }
 
 function openJourney(id){ stopTimer(); setState({journey:{comboId:id,index:0,mode:'cinematic',playing:false,immersive:false}}); }
-function closeJourney(){ stopTimer(); setState({journey:null}); }
+function closeJourney(){ stopTimer(); closeMap(); setState({journey:null}); }
 function setMode(m){ setState({journey:{...state.journey,mode:m}}); }
 function jNext(){ if(!state.journey) return; const pl=playlist(state.journey); setState({journey:{...state.journey,index:Math.min(state.journey.index+1,pl.length-1)}}); }
 function jPrev(){ if(!state.journey) return; setState({journey:{...state.journey,index:Math.max(0,state.journey.index-1)}}); }
@@ -179,7 +179,30 @@ function startTimer(){
   },3800);
 }
 function stopTimer(){ if(jTimer){ clearInterval(jTimer); jTimer=null; } }
-function journeyBuy(){ const c=comboOf(state.journey.comboId); stopTimer(); setState({selectedId:c.id,journey:null}); toast('Đã chọn '+c.name); }
+function journeyBuy(){ const c=comboOf(state.journey.comboId); stopTimer(); closeMap(); setState({selectedId:c.id,journey:null}); toast('Đã chọn '+c.name); }
+
+/* ---- expanded map modal: mounted outside #overlays so it never re-renders
+   the journey screen (keeps the VR backdrop animation from restarting) ---- */
+function openMap(){ if(!state.journey) return; renderMap(); }
+function closeMap(){ const m=document.getElementById('mapModal'); if(m) m.innerHTML=''; }
+function renderMap(){ const m=document.getElementById('mapModal'); if(m) m.innerHTML=viewMapModal(); }
+/* patch the open modal in place (no innerHTML rebuild) so it doesn't flicker/replay the open animation */
+function mapGoto(i){
+  if(!state.journey) return;
+  const j=state.journey; j.index=i;
+  const root=document.getElementById('mapModal'); if(!root) return;
+  const pl=playlist(j), cur=DEST[pl[i]], human=i+1, total=pl.length;
+  const cls=k=> k<i?'done':(k===i?'active':'next');
+  root.querySelectorAll('.itin').forEach((el,k)=>{ el.className='itin '+cls(k); });
+  root.querySelectorAll('.bigpin').forEach((el,k)=>{
+    el.className='bigpin '+cls(k);
+    const lab=el.querySelector('.lab');
+    if(k===i){ if(!lab){ const s=document.createElement('span'); s.className='lab'; s.textContent=DEST[pl[k]].name; el.appendChild(s); } }
+    else if(lab){ lab.remove(); }
+  });
+  const ttl=root.querySelector('.map-mtitle'); if(ttl) ttl.textContent=cur.name+' · điểm '+human+'/'+total;
+  const pip=root.querySelector('.piplabel'); if(pip) pip.innerHTML=lucide('pin','currentColor',14)+' '+esc(cur.name);
+}
 
 /* ---- event delegation ---- */
 document.addEventListener('click', e=>{
@@ -200,7 +223,11 @@ document.addEventListener('click', e=>{
     case 'closeExplore': closeExplore(); break;
     case 'closeJourney': closeJourney(); break;
     case 'jBuy': journeyBuy(); break;
-    case 'mode': setMode(t.dataset.mode); break;
+    case 'mode': if(t.dataset.mode==='map'){ openMap(); } else { setMode(t.dataset.mode); } break;
+    case 'expandMap': openMap(); break;
+    case 'closeMap': closeMap(); break;
+    case 'mapGoto': mapGoto(+t.dataset.i); break;
+    case 'mapStop': e.stopPropagation(); break;
     case 'jNext': jNext(); break;
     case 'jPrev': jPrev(); break;
     case 'jGoto': jGoto(+t.dataset.i); break;
@@ -612,8 +639,8 @@ function viewJourney(){
       <span class="hotspot d" style="display:${cine?'block':'none'};left:66%;top:44%"></span>
 
       <!-- cinematic minimap -->
-      <div class="minimap" style="display:${cine&&!imm?'block':'none'}">
-        <div class="mono kk" style="margin-bottom:8px">Sơ đồ hành trình</div>
+      <div class="minimap" style="display:${cine&&!imm?'block':'none'}" data-act="expandMap" title="Mở rộng bản đồ">
+        <div class="mini-head"><span class="mono kk">Sơ đồ hành trình</span>${lucide('maximize','#A9C9B4',13)}</div>
         <div class="minibox">
           <svg viewBox="0 0 100 68" preserveAspectRatio="none" class="mapsvg"><polyline points="${route}" fill="none" stroke="rgba(140,198,63,.6)" stroke-width="0.8" stroke-dasharray="2 2"></polyline></svg>
           ${miniDots}
@@ -678,6 +705,60 @@ function viewJourney(){
   </div>`;
 }
 
+/* ---- expanded map modal view (independent of the journey re-render) ---- */
+function viewMapModal(){
+  const j=state.journey; if(!j) return '';
+  const c=comboOf(j.comboId);
+  const pl=playlist(j), curId=pl[j.index], cur=DEST[curId];
+  const human=j.index+1, total=pl.length;
+  const route=pl.map(id=>DEST[id].mx+','+(DEST[id].my*0.68).toFixed(1)).join(' ');
+  const doneRoute=pl.slice(0,human).map(id=>DEST[id].mx+','+(DEST[id].my*0.68).toFixed(1)).join(' ');
+  const stepState=i=> i<j.index?'done':(i===j.index?'active':'next');
+
+  const itin=pl.map((id,i)=>{
+    const st=stepState(i);
+    return `<button class="itin ${st}" data-act="mapGoto" data-i="${i}">
+      <span class="n">${i+1}</span><span class="nm">${esc(DEST[id].name)}</span>
+    </button>`;
+  }).join('');
+
+  const bigPins=pl.map((id,i)=>{
+    const st=stepState(i);
+    return `<button class="bigpin ${st}" data-act="mapGoto" data-i="${i}" title="${esc(DEST[id].name)}" style="left:${DEST[id].mx}%;top:${DEST[id].my}%">
+      <span class="dot">${i+1}</span>${i===j.index?`<span class="lab">${esc(DEST[id].name)}</span>`:''}
+    </button>`;
+  }).join('');
+
+  return `<div class="map-scrim" data-act="closeMap">
+    <div class="map-modal" data-act="mapStop">
+      <div class="map-mhead">
+        <div>
+          <div class="mono kk">${esc(c.group)} · Sơ đồ hành trình</div>
+          <div class="serif map-mtitle">${esc(cur.name)} · điểm ${human}/${total}</div>
+        </div>
+        <button class="xbtn" data-act="closeMap">${lucide('x','currentColor',18)}</button>
+      </div>
+      <div class="mapmode mapmode-modal">
+        <div class="itinbox">
+          <div class="mono kk" style="margin-bottom:10px">Lộ trình gợi ý</div>
+          ${itin}
+        </div>
+        <div class="bigmap">
+          <svg viewBox="0 0 100 68" preserveAspectRatio="none" class="mapsvg">
+            <ellipse cx="22" cy="26" rx="24" ry="18" fill="#8CC63F" opacity="0.07"></ellipse>
+            <ellipse cx="80" cy="42" rx="20" ry="20" fill="#E2571E" opacity="0.12"></ellipse>
+            <ellipse cx="55" cy="60" rx="30" ry="13" fill="#0E8F6E" opacity="0.2"></ellipse>
+            <polyline points="${route}" fill="none" stroke="rgba(140,198,63,.85)" stroke-width="0.7" stroke-dasharray="2.2 2"></polyline>
+            <polyline points="${doneRoute}" fill="none" stroke="#8CC63F" stroke-width="1.1"></polyline>
+          </svg>
+          ${bigPins}
+          <div class="pip"><div class="pipbg"></div><div class="piplabel">${lucide('pin','currentColor',14)} ${esc(cur.name)}</div></div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
 /* ---- targeted re-render: only the dynamic regions ---- */
 function render(){
   const qb=document.getElementById('quizBody'); if(qb) qb.innerHTML=viewQuizBody();
@@ -726,7 +807,8 @@ function mount(){
     viewTopbar() +
     `<div style="overflow-x:hidden">` + viewHero() + viewCombosShell() + `</div>` +
     `<div id="buyslot"></div>` +
-    `<div id="overlays"></div>`;
+    `<div id="overlays"></div>` +
+    `<div id="mapModal"></div>`;
   render();
   measureChrome();
   animateStats();
