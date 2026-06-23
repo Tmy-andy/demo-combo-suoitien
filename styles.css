@@ -93,13 +93,13 @@ a{color:inherit}
   backdrop-filter:blur(9px) saturate(1.1);
   border-bottom:1px solid var(--line);
 }
-.brand{display:flex;align-items:baseline;gap:11px;line-height:1}
-.brand .mk{font-family:"Lora",serif;font-weight:600;font-size:22px;letter-spacing:-.02em}
+.brand{display:flex;flex-direction:column;gap:2px;line-height:1}
+.brand .mk{font-family:"Lora",serif;font-weight:600;font-size:28px;letter-spacing:-.02em}
 .brand .ov{font-family:var(--mono);font-size:9.5px;letter-spacing:.24em;color:var(--muted);text-transform:uppercase}
 .vrchip{
   display:inline-flex;align-items:center;gap:9px;padding:7px 14px 7px 9px;
   border:1.5px solid var(--ink);border-radius:999px;font-size:12px;font-weight:600;
-  font-family:var(--mono);letter-spacing:.06em;background:transparent;
+  font-family:var(--mono);letter-spacing:.06em;background:transparent;white-space:nowrap;
 }
 .vrchip .ring{width:18px;height:18px;border-radius:50%;border:2px solid var(--lime-d);border-top-color:transparent;animation:radar 3.4s linear infinite}
 
