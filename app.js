@@ -121,6 +121,24 @@ function viewRec(){
   selectCombo(id);
 }
 function toggleSea(id){ const seaBy={...state.seaBy}; seaBy[id]=!seaBy[id]; setState({seaBy}); }
+/* commit the sea add-on (no toast — the up-sell card animates its own
+   confirmation) */
+function commitSea(id){ const seaBy={...state.seaBy}; seaBy[id]=true; setState({seaBy}); }
+
+/* Journey: play a little "ticket torn off & accepted" animation on the up-sell
+   card — stamp flips to "Đã thêm", the card tears and fades — then drop it. The
+   state flip + journey remount happen only after the animation, so nothing
+   flashes mid-tear. */
+function seaAddJourney(id){
+  const wrap=document.querySelector('.j-seanote-wrap');
+  if(!wrap || reducedMotion()){ commitSea(id); if(state.journey) mountJourney(); return; }
+  wrap.classList.add('confirming');
+  wrap.addEventListener('animationend',e=>{
+    if(e.animationName!=='seanoteTear') return;
+    commitSea(id); if(state.journey) mountJourney();   // remount rebuilds without the note
+  },{once:true});
+}
+function seaAddExplore(id){ commitSea(id); toast('Đã thêm vé Biển Tiên Đồng vào '+comboOf(id).name); }
 const reducedMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
 /* select a combo — commit state, then play the tear on the fresh card.
    Committing first means the re-rendered card owns the animation, so its
@@ -151,7 +169,10 @@ function buy(){
 }
 
 /* ---- VR / explore / journey ---- */
-const playlist = j => { const c=comboOf(j.comboId); let d=c.dest.slice(); if(state.seaBy[c.id]) d=d.concat(SEA_DEST); return d; };
+/* VR/journey always previews every spot — Biển Tiên Đồng included — regardless
+   of whether the combo has the sea add-on ticked. The tick only governs the
+   real ticket; preview shows the full park so we can up-sell it. */
+const playlist = j => { const c=comboOf(j.comboId); return c.dest.concat(SEA_DEST); };
 function openPano(id){ setState({vr:{id}}); }
 function closeVR(){ setState({vr:null}); }
 function openExplore(id){ setState({exploreId:id||state.selectedId||state.recId||COMBOS[0].id}); }
@@ -224,6 +245,7 @@ function patchJourney(){
   const root=document.getElementById('journeyHost'); if(!root) return;
   const pl=playlist(j), i=j.index, cur=DEST[pl[i]], human=i+1, total=pl.length;
   const cls=k=> k<i?'done':(k===i?'active':'next');
+  const seaCls=k=> DEST[pl[k]].sea?' sea':'';   // keep the Biển Tiên Đồng highlight across patches
   const set=(sel,fn)=>{ const el=root.querySelector(sel); if(el) fn(el); };
 
   // cinematic centre title
@@ -234,11 +256,11 @@ function patchJourney(){
   // audio pill
   set('.audiobox .nm',el=>el.textContent=cur.name);
   // minimap dots
-  root.querySelectorAll('.minidot').forEach((el,k)=>{ el.className='minidot '+cls(k); });
+  root.querySelectorAll('.minidot').forEach((el,k)=>{ el.className='minidot '+cls(k)+seaCls(k); });
   // map-mode itinerary + pins + pip
-  root.querySelectorAll('.mapmode .itin').forEach((el,k)=>{ el.className='itin '+cls(k); });
+  root.querySelectorAll('.mapmode .itin').forEach((el,k)=>{ el.className='itin '+cls(k)+seaCls(k); });
   root.querySelectorAll('.mapmode .bigpin').forEach((el,k)=>{
-    el.className='bigpin '+cls(k);
+    el.className='bigpin '+cls(k)+seaCls(k);
     const lab=el.querySelector('.lab');
     if(k===i){ if(!lab){ const s=document.createElement('span'); s.className='lab'; s.textContent=DEST[pl[k]].name; el.appendChild(s); } }
     else if(lab){ lab.remove(); }
@@ -254,11 +276,14 @@ function patchJourney(){
   set('.j-counter span',el=>el.textContent='/ '+String(total).padStart(2,'0'));
   set('.j-strip-fill',el=>el.style.width=(total>1?(i/(total-1)*100):100).toFixed(1)+'%');
   root.querySelectorAll('.j-frame').forEach((el,k)=>{
-    el.className='j-frame '+cls(k);
-    const st=cls(k);
+    el.className='j-frame '+cls(k)+seaCls(k);
+    const st=cls(k), d=DEST[pl[k]];
     const ic=el.querySelector('.fic');
-    if(ic) ic.innerHTML=svgIcon(DEST[pl[k]].icon, st==='active'?'var(--forest-2)':(st==='done'?'#fff':'#8FB29C'),15);
+    if(ic) ic.innerHTML=svgIcon(d.icon, st==='active'?'var(--forest-2)':(d.sea?'#fff':(st==='done'?'#fff':'#8FB29C')),15);
   });
+  // sea up-sell note: show only while the current stop is a Biển Tiên Đồng spot
+  // and the add-on isn't bought yet
+  set('.j-seanote-wrap',el=>{ el.style.display=(cur.sea && !state.seaBy[j.comboId])?'block':'none'; });
   // keep the active frame in view
   const act=root.querySelector('.j-frame.active');
   if(act) act.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
@@ -281,6 +306,8 @@ document.addEventListener('click', e=>{
     case 'viewRec': viewRec(); break;
     case 'select': selectCombo(id); break;
     case 'sea': e.stopPropagation(); toggleSea(id); break;
+    case 'seaAddJourney': e.stopPropagation(); seaAddJourney(id); break;
+    case 'seaAddExplore': e.stopPropagation(); seaAddExplore(id); break;
     case 'sheet': e.stopPropagation(); setState({sheetId:id}); break;
     case 'closeSheet': setState({sheetId:null}); break;
     case 'sheetStop': e.stopPropagation(); break;
@@ -646,7 +673,7 @@ function viewVR(){
 function viewExplore(){
   if(!state.exploreId) return '';
   const c=comboOf(state.exploreId); const sea=!!state.seaBy[c.id];
-  let ids=c.dest.slice(); if(sea) ids=ids.concat(SEA_DEST);
+  const ids=c.dest.concat(SEA_DEST);  // always preview the full park, sea included
 
   const pins=ids.map(id=>{
     const d=DEST[id];
@@ -659,6 +686,7 @@ function viewExplore(){
   const tiles=ids.map(id=>{
     const d=DEST[id];
     return `<button class="tile ${d.sea?'sea':''}" data-act="portal" data-id="${id}">
+      ${d.sea?`<span class="sea-flag mono">Biển Tiên Đồng</span>`:''}
       <span class="ic">${svgIcon(d.icon,d.sea?'#0E7E85':'#0A7C3E',19)}</span>
       <span><span class="nm">${esc(d.name)}</span><span class="ty">${esc(d.type)}</span></span>
       <span class="open mono">Mở 360° ${lucide('arrow-right','currentColor',13)}</span>
@@ -692,6 +720,23 @@ function viewExplore(){
         <span><span class="sw" style="background:#0E8F6E"></span>Biển Tiên Đồng</span>
         <span style="margin-left:auto;color:var(--muted)">${ids.length} điểm · không theo thứ tự, tuỳ bạn</span>
       </div>
+      ${sea?'':`<div class="sea-upsell-wrap">
+        <span class="sea-upsell-stamp mono">Chưa gồm</span>
+        <div class="sea-upsell">
+          <div class="sea-upsell-stub">
+            <span class="sea-upsell-ic">${lucide('water','currentColor',20)}</span>
+            <span class="sea-upsell-stub-lab mono">Vé<br>nước</span>
+          </div>
+          <div class="sea-upsell-main">
+            <div class="sea-upsell-body">
+              <span class="sea-upsell-eyebrow">Vé bổ sung · Biển Tiên Đồng</span>
+              <span class="sea-upsell-title">Khu này chưa có trong vé của bạn</span>
+              <span class="sea-upsell-sub">Các điểm nước dưới đây chỉ để xem trước 360° — muốn vui chơi ở thực tế cần thêm vé.</span>
+            </div>
+            <button class="sea-upsell-btn" data-act="seaAddExplore" data-id="${c.id}">Thêm Biển Tiên Đồng</button>
+          </div>
+        </div>
+      </div>`}
       <div class="tiles">${tiles}</div>
     </div>
   </div>`;
@@ -707,14 +752,18 @@ function viewJourney(){
   const route=pl.map(id=>DEST[id].mx+','+(DEST[id].my*0.68).toFixed(1)).join(' ');
   const doneRoute=pl.slice(0,human).map(id=>DEST[id].mx+','+(DEST[id].my*0.68).toFixed(1)).join(' ');
   const cine=j.mode==='cinematic', map=j.mode==='map', fam=j.mode==='family';
+  const seaOn=!!state.seaBy[c.id];          // real sea ticket added?
+  const onSea=!!cur.sea;                     // currently previewing a sea spot?
+  const showSeaNote=onSea && !seaOn && !imm; // up-sell only when relevant
 
   const stepState=i=> i<j.index?'done':(i===j.index?'active':'next');
 
   // filmstrip frames — each stop is a little frame, current one lit
   const timeline=pl.map((id,i)=>{
     const st=stepState(i), d=DEST[id];
-    return `<button class="j-frame ${st}" data-act="jGoto" data-i="${i}" title="${esc(d.name)}">
-      <span class="fic">${svgIcon(d.icon,st==='active'?'var(--forest-2)':(st==='done'?'#fff':'#8FB29C'),15)}</span>
+    return `<button class="j-frame ${st} ${d.sea?'sea':''}" data-act="jGoto" data-i="${i}" title="${esc(d.name)}">
+      ${d.sea?`<span class="fsea mono">Biển Tiên Đồng</span>`:''}
+      <span class="fic">${svgIcon(d.icon,st==='active'?'var(--forest-2)':(d.sea?'#fff':(st==='done'?'#fff':'#8FB29C')),15)}</span>
       <span class="fno mono">${String(i+1).padStart(2,'0')}</span>
       <span class="fnm">${esc(d.name)}</span>
     </button>`;
@@ -722,23 +771,23 @@ function viewJourney(){
 
   // map-mode itinerary
   const itin=pl.map((id,i)=>{
-    const st=stepState(i);
-    return `<button class="itin ${st}" data-act="jGoto" data-i="${i}">
-      <span class="n">${i+1}</span><span class="nm">${esc(DEST[id].name)}</span>
+    const st=stepState(i), d=DEST[id];
+    return `<button class="itin ${st} ${d.sea?'sea':''}" data-act="jGoto" data-i="${i}">
+      <span class="n">${i+1}</span><span class="nm">${esc(d.name)}</span>${d.sea?`<span class="isea mono">+ vé</span>`:''}
     </button>`;
   }).join('');
 
   // big map pins
   const bigPins=pl.map((id,i)=>{
-    const st=stepState(i);
-    return `<button class="bigpin ${st}" data-act="jGoto" data-i="${i}" title="${esc(DEST[id].name)}" style="left:${DEST[id].mx}%;top:${DEST[id].my}%">
-      <span class="dot">${i+1}</span>${i===j.index?`<span class="lab">${esc(DEST[id].name)}</span>`:''}
+    const st=stepState(i), d=DEST[id];
+    return `<button class="bigpin ${st} ${d.sea?'sea':''}" data-act="jGoto" data-i="${i}" title="${esc(d.name)}" style="left:${d.mx}%;top:${d.my}%">
+      <span class="dot">${i+1}</span>${i===j.index?`<span class="lab">${esc(d.name)}</span>`:''}
     </button>`;
   }).join('');
   // minimap dots
   const miniDots=pl.map((id,i)=>{
-    const st=stepState(i);
-    return `<span class="minidot ${st}" style="left:${DEST[id].mx}%;top:${DEST[id].my}%"></span>`;
+    const st=stepState(i), d=DEST[id];
+    return `<span class="minidot ${st} ${d.sea?'sea':''}" style="left:${d.mx}%;top:${d.my}%"></span>`;
   }).join('');
 
   const audioWave=`<span class="wave">${'<i></i>'.repeat(5)}</span>`;
@@ -771,6 +820,25 @@ function viewJourney(){
       ${vrScene(c.id)}
       <div class="j-vignette"></div>
       <div class="j-glow"></div>
+      <!-- sea up-sell: shown while previewing a Biển Tiên Đồng spot without the add-on -->
+      <div class="j-seanote-wrap" style="display:${showSeaNote?'block':'none'}">
+        <span class="j-seanote-stamp mono">Chưa gồm</span>
+        <span class="j-seanote-stamp added mono">Đã thêm ✓</span>
+        <div class="j-seanote">
+          <div class="j-seanote-stub">
+            <span class="j-seanote-ic">${lucide('water','currentColor',20)}</span>
+            <span class="j-seanote-stub-lab mono">Vé<br>nước</span>
+          </div>
+          <div class="j-seanote-main">
+            <div class="j-seanote-body">
+              <span class="j-seanote-eyebrow">Vé bổ sung · Biển Tiên Đồng</span>
+              <span class="j-seanote-title">Khu này chưa có trong vé của bạn</span>
+              <span class="j-seanote-sub">Đang xem trước 360°. Muốn vui chơi ở thực tế, hãy thêm vé Biển Tiên Đồng.</span>
+            </div>
+            <button class="j-seanote-btn" data-act="seaAddJourney" data-id="${c.id}">Thêm vé</button>
+          </div>
+        </div>
+      </div>
       <!-- cinematic center title, poster-style with a ghost index numeral -->
       <div class="cine-title" style="display:${cine?'block':'none'}">
         <span class="cine-ghost serif">${String(human).padStart(2,'0')}</span>
@@ -864,16 +932,16 @@ function viewMapModal(){
   const stepState=i=> i<j.index?'done':(i===j.index?'active':'next');
 
   const itin=pl.map((id,i)=>{
-    const st=stepState(i);
-    return `<button class="itin ${st}" data-act="mapGoto" data-i="${i}">
-      <span class="n">${i+1}</span><span class="nm">${esc(DEST[id].name)}</span>
+    const st=stepState(i), d=DEST[id];
+    return `<button class="itin ${st} ${d.sea?'sea':''}" data-act="mapGoto" data-i="${i}">
+      <span class="n">${i+1}</span><span class="nm">${esc(d.name)}</span>${d.sea?`<span class="isea mono">+ vé</span>`:''}
     </button>`;
   }).join('');
 
   const bigPins=pl.map((id,i)=>{
-    const st=stepState(i);
-    return `<button class="bigpin ${st}" data-act="mapGoto" data-i="${i}" title="${esc(DEST[id].name)}" style="left:${DEST[id].mx}%;top:${DEST[id].my}%">
-      <span class="dot">${i+1}</span>${i===j.index?`<span class="lab">${esc(DEST[id].name)}</span>`:''}
+    const st=stepState(i), d=DEST[id];
+    return `<button class="bigpin ${st} ${d.sea?'sea':''}" data-act="mapGoto" data-i="${i}" title="${esc(d.name)}" style="left:${d.mx}%;top:${d.my}%">
+      <span class="dot">${i+1}</span>${i===j.index?`<span class="lab">${esc(d.name)}</span>`:''}
     </button>`;
   }).join('');
 

@@ -654,7 +654,14 @@ svg{vertical-align:-0.15em}
 .mapmode{position:absolute;top:clamp(142px,18vh,168px);bottom:clamp(132px,20vh,178px);
   left:clamp(14px,3vw,28px);right:clamp(14px,3vw,28px);gap:clamp(12px,2vw,20px);flex-wrap:wrap;z-index:4}
 .itinbox{width:clamp(180px,22vw,250px);flex:none;display:flex;flex-direction:column;background:rgba(8,48,28,.8);
-  border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:14px;overflow:auto}
+  border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:14px;overflow:auto;
+  scrollbar-width:thin;scrollbar-color:rgba(140,198,63,.45) transparent}
+.itinbox::-webkit-scrollbar{width:8px}
+.itinbox::-webkit-scrollbar-track{background:transparent}
+.itinbox::-webkit-scrollbar-thumb{background:rgba(140,198,63,.4);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
+.itinbox::-webkit-scrollbar-thumb:hover{background:rgba(140,198,63,.65);background-clip:padding-box}
+/* "Lộ trình gợi ý" heading — lift it off the dark panel */
+.itinbox .kk{color:var(--lime);font-weight:600;opacity:.95}
 .itin{display:flex;align-items:center;gap:10px;text-align:left;cursor:pointer;background:transparent;border:none;border-radius:10px;padding:9px 10px;margin-bottom:4px}
 .itin .n{flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-family:var(--mono);font-size:11px;font-weight:700;background:rgba(255,255,255,.12);color:#9DBCA9}
 .itin .nm{font-size:13px;font-weight:500;color:#9DBCA9}
@@ -749,4 +756,184 @@ svg{vertical-align:-0.15em}
   .j-counter{flex-direction:row;align-items:baseline;gap:6px}
   /* keep Toàn cảnh pinned to the right edge instead of on its own row */
   .j-full{position:absolute;right:clamp(16px,4vw,34px);bottom:clamp(16px,2.6vw,24px)}
+}
+
+/* ============================================================
+   BIỂN TIÊN ĐỒNG — up-sell highlight
+   Sea spots are previewable everywhere but cost an add-on ticket,
+   so their buttons are pushed to stand out hard, and a note nudges
+   the buyer to add the ticket.
+   ============================================================ */
+@keyframes seaSheen{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+@keyframes seaPulse{0%,100%{box-shadow:0 10px 26px -8px rgba(16,166,174,.65)}50%{box-shadow:0 14px 34px -6px rgba(16,166,174,.9)}}
+
+/* — filmstrip frame (journey dock) — */
+.j-frame.sea{position:relative;overflow:visible;
+  background:linear-gradient(135deg,#0FB3BC,#0C8E96 60%,#11A6AE);
+  background-size:200% 200%;animation:seaSheen 5s ease infinite,seaPulse 3.4s ease-in-out infinite;
+  border:1px solid #4FE0E6}
+.j-frame.sea .fic{background:rgba(255,255,255,.22)}
+.j-frame.sea .fno{color:#E8FEFF;opacity:.85}
+.j-frame.sea .fnm{color:#fff;font-weight:700}
+/* active sea spot keeps the water tone (don't let it read as a normal stop)
+   and gets an extra orange ring so it stays unmistakably "the add-on" */
+.j-frame.sea.active{background:linear-gradient(135deg,#13C2CC,#0FA0A8 60%,#16BEC6);
+  animation:seaSheen 5s ease infinite;border:1.6px solid #FFB36B;
+  box-shadow:0 0 0 2px rgba(242,103,28,.45),0 16px 34px -8px rgba(16,166,174,.85)}
+.j-frame.sea.active .fic{background:rgba(255,255,255,.28)}
+.j-frame.sea.active .fno{color:#EAFEFF;opacity:.9}
+.j-frame.sea.active .fnm{color:#fff}
+.fsea{position:absolute;top:-9px;left:8px;z-index:3;
+  background:linear-gradient(90deg,var(--orange),#FF8A3D);color:#fff;
+  font-size:8.5px;font-weight:800;letter-spacing:.04em;padding:2px 7px;border-radius:999px;
+  box-shadow:0 3px 8px rgba(242,103,28,.5);white-space:nowrap}
+
+/* — itinerary rows (map mode) — */
+.itin.sea{background:rgba(16,166,174,.16);border:1px solid rgba(79,224,230,.45)}
+.itin.sea .n{background:var(--teal);color:#fff}
+.itin.sea .nm{color:#CFF6F8;font-weight:700}
+.itin.sea.active{background:rgba(16,166,174,.28);border-color:#FFB36B}
+.itin.sea.active .n{background:var(--teal);color:#fff;box-shadow:0 0 0 2px rgba(242,103,28,.4)}
+.itin.sea.active .nm{color:#fff}
+.isea{margin-left:auto;flex:none;background:var(--orange);color:#fff;font-size:9px;font-weight:800;
+  letter-spacing:.03em;padding:2px 7px;border-radius:999px}
+
+/* — map pins / minimap dots — */
+.bigpin.sea .dot{background:var(--teal);box-shadow:0 0 0 4px rgba(16,166,174,.35);animation:seaPulse 3s ease-in-out infinite}
+.bigpin.sea.active .dot{background:var(--teal);box-shadow:0 0 0 3px rgba(242,103,28,.5),0 0 0 7px rgba(16,166,174,.3);animation:seaPulse 2.4s ease-in-out infinite}
+.minidot.sea{background:var(--teal);box-shadow:0 0 0 3px rgba(16,166,174,.35)}
+.minidot.sea.active{background:var(--teal);box-shadow:0 0 0 3px rgba(242,103,28,.55)}
+
+/* — explore tile — */
+.tile.sea{position:relative;overflow:visible;
+  background:linear-gradient(135deg,#E6FAFB,#D2F1F3);
+  border:1.6px solid #6FD7DD;box-shadow:0 8px 22px -10px rgba(16,166,174,.55)}
+.tile.sea:hover{transform:translateY(-3px);border-color:var(--teal)}
+.tile.sea .ic{border-color:#9FE3E7;box-shadow:0 0 0 3px rgba(16,166,174,.12)}
+.tile.sea .nm{color:#0A6E74}
+.tile.sea .open{color:var(--teal)}
+.sea-flag{position:absolute;top:-8px;left:12px;z-index:2;
+  background:linear-gradient(90deg,var(--orange),#FF8A3D);color:#fff;
+  font-size:9px;font-weight:800;letter-spacing:.04em;padding:3px 9px;border-radius:999px;
+  box-shadow:0 4px 10px rgba(242,103,28,.45);white-space:nowrap}
+
+/* Journey sea up-sell note — a real admission ticket pinned to the TOP-LEFT of
+   the stage: narrow tear-off stub (green gradient), a vertical perforation seam
+   (CSS-mask, same trick as combo tickets), then the message body. The wrapper
+   is unmasked so the corner stamp can sit half-on / half-off the card. */
+@keyframes seanoteTear{
+  0%{transform:none;opacity:1}
+  35%{transform:translateY(-3px) rotate(-1.5deg)}
+  100%{transform:translateY(26px) rotate(4deg);opacity:0}
+}
+/* "Đã thêm" stamp lands hard: starts huge & faint, zooms out fast and slams to
+   a settle that's a touch bigger than the normal stamp for emphasis */
+@keyframes stampSwap{
+  0%{opacity:0;transform:rotate(-2deg) scale(2.6)}
+  45%{opacity:1;transform:rotate(-8deg) scale(1)}
+  68%{transform:rotate(-6.5deg) scale(1.22)}
+  100%{opacity:1;transform:rotate(-7deg) scale(1.12)}
+}
+/* the "Chưa gồm" stamp slams down: drops from above, oversized & faint, then
+   snaps to size with a tiny settle wobble — like a rubber stamp pressed on */
+@keyframes stampPress{
+  0%{opacity:0;transform:translateY(-10px) rotate(2deg) scale(1.9)}
+  55%{opacity:1;transform:translateY(0) rotate(-9deg) scale(.92)}
+  72%{transform:rotate(-6deg) scale(1.04)}
+  86%{transform:rotate(-7.5deg) scale(.99)}
+  100%{opacity:1;transform:rotate(-7deg) scale(1)}
+}
+
+.j-seanote-wrap{position:absolute;left:clamp(16px,3vw,30px);top:clamp(70px,9vw,88px);z-index:12;
+  width:max-content;max-width:min(560px,calc(100% - 32px))}
+.j-seanote-wrap.confirming{animation:seanoteTear .6s cubic-bezier(.4,0,.6,1) .55s forwards;pointer-events:none}
+
+/* corner stamps — sit half outside the card like the "GỢI Ý CHO BẠN" stamp */
+.j-seanote-stamp{position:absolute;top:-12px;right:18px;z-index:3;font-size:10px;font-weight:600;
+  letter-spacing:.14em;color:var(--orange);border:2px solid var(--orange);border-radius:6px;
+  padding:5px 9px;background:var(--card);transform:rotate(-7deg);transform-origin:center;
+  animation:stampPress .5s cubic-bezier(.3,1.4,.5,1) .28s both}
+.j-seanote-stamp.added{color:var(--green);border-color:var(--green);opacity:0;pointer-events:none;animation:none}
+@media(prefers-reduced-motion:reduce){
+  .j-seanote-stamp,.sea-upsell-stamp{animation:none}
+}
+.j-seanote-wrap.confirming .j-seanote-stamp:not(.added){opacity:0}
+.j-seanote-wrap.confirming .j-seanote-stamp.added{animation:stampSwap .44s cubic-bezier(.2,.9,.3,1) both}
+
+.j-seanote{display:flex;align-items:stretch;border-radius:12px;background:var(--card);
+  box-shadow:0 18px 40px -20px rgba(0,0,0,.7);
+  --seam:84px;--notch:11px;
+  -webkit-mask:
+    radial-gradient(circle var(--notch) at var(--seam) 0,#0000 calc(var(--notch) - 1px),#000 var(--notch)) no-repeat,
+    radial-gradient(circle var(--notch) at var(--seam) 100%,#0000 calc(var(--notch) - 1px),#000 var(--notch)) no-repeat,
+    radial-gradient(circle 3px at var(--seam) 7px,#0000 3px,#000 3.6px) 0 0/100% 14px repeat-y;
+  mask:
+    radial-gradient(circle var(--notch) at var(--seam) 0,#0000 calc(var(--notch) - 1px),#000 var(--notch)) no-repeat,
+    radial-gradient(circle var(--notch) at var(--seam) 100%,#0000 calc(var(--notch) - 1px),#000 var(--notch)) no-repeat,
+    radial-gradient(circle 3px at var(--seam) 7px,#0000 3px,#000 3.6px) 0 0/100% 14px repeat-y;
+  -webkit-mask-composite:source-in;mask-composite:intersect}
+/* the stub — white like the body, bordered on every edge except the seam */
+.j-seanote-stub{flex:none;width:84px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
+  padding:16px 0;border-radius:12px 0 0 12px;background:var(--card);
+  border:1.5px solid var(--line);border-right:none}
+.j-seanote-ic{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;
+  color:var(--teal);background:#EAF6F6;border:1.5px solid #D3E8E8}
+.j-seanote-stub-lab{font-size:9.5px;line-height:1.2;letter-spacing:.12em;text-transform:uppercase;
+  text-align:center;color:var(--ink-soft)}
+/* the body — bordered on every edge except the seam */
+.j-seanote-main{display:flex;align-items:center;gap:16px;padding:15px 18px 15px 16px;
+  border-radius:0 12px 12px 0;border:1.5px solid var(--line);border-left:none}
+.j-seanote-body{display:flex;flex-direction:column;gap:3px;min-width:0}
+.j-seanote-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;
+  font-weight:500;color:var(--orange)}
+.j-seanote-title{font-size:14.5px;line-height:1.25;font-weight:600;color:var(--ink)}
+.j-seanote-sub{font-size:12.5px;line-height:1.5;color:var(--ink-soft)}
+.j-seanote-btn{flex:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--teal);
+  padding:10px 18px;border-radius:9px;background:#fff;border:1.5px solid var(--teal);transition:.16s}
+.j-seanote-btn:hover{background:var(--teal);color:#fff}
+
+/* — explore up-sell banner — same real-ticket build on the light page — */
+.sea-upsell-wrap{position:relative;margin:14px 0 16px}
+.sea-upsell-stamp{position:absolute;top:-12px;right:18px;z-index:3;font-size:10px;font-weight:600;
+  letter-spacing:.14em;color:var(--orange);border:2px solid var(--orange);border-radius:6px;
+  padding:5px 9px;background:var(--card);transform:rotate(-7deg);transform-origin:center;
+  animation:stampPress .5s cubic-bezier(.3,1.4,.5,1) .28s both}
+.sea-upsell{display:flex;align-items:stretch;
+  border-radius:12px;background:var(--card);box-shadow:0 8px 22px -16px rgba(13,35,26,.5);
+  --seam:84px;--notch:11px;
+  -webkit-mask:
+    radial-gradient(circle var(--notch) at var(--seam) 0,#0000 calc(var(--notch) - 1px),#000 var(--notch)) no-repeat,
+    radial-gradient(circle var(--notch) at var(--seam) 100%,#0000 calc(var(--notch) - 1px),#000 var(--notch)) no-repeat,
+    radial-gradient(circle 3px at var(--seam) 7px,#0000 3px,#000 3.6px) 0 0/100% 14px repeat-y;
+  mask:
+    radial-gradient(circle var(--notch) at var(--seam) 0,#0000 calc(var(--notch) - 1px),#000 var(--notch)) no-repeat,
+    radial-gradient(circle var(--notch) at var(--seam) 100%,#0000 calc(var(--notch) - 1px),#000 var(--notch)) no-repeat,
+    radial-gradient(circle 3px at var(--seam) 7px,#0000 3px,#000 3.6px) 0 0/100% 14px repeat-y;
+  -webkit-mask-composite:source-in;mask-composite:intersect}
+.sea-upsell-stub{flex:none;width:84px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
+  padding:16px 0;border-radius:12px 0 0 12px;background:var(--card);
+  border:1.5px solid var(--line);border-right:none}
+.sea-upsell-ic{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;
+  color:var(--teal);background:#EAF6F6;border:1.5px solid #D3E8E8}
+.sea-upsell-stub-lab{font-size:9.5px;line-height:1.2;letter-spacing:.12em;text-transform:uppercase;
+  text-align:center;color:var(--ink-soft)}
+.sea-upsell-main{flex:1;display:flex;align-items:center;gap:16px;padding:15px 18px 15px 16px;
+  border-radius:0 12px 12px 0;border:1.5px solid var(--line);border-left:none}
+.sea-upsell-body{display:flex;flex-direction:column;gap:3px;min-width:0}
+.sea-upsell-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;
+  font-weight:500;color:var(--orange)}
+.sea-upsell-title{font-size:14.5px;line-height:1.25;font-weight:600;color:var(--ink)}
+.sea-upsell-sub{font-size:12.5px;line-height:1.5;color:var(--ink-soft)}
+.sea-upsell-btn{flex:none;margin-left:auto;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;
+  color:var(--teal);padding:10px 18px;border-radius:9px;background:#fff;
+  border:1.5px solid var(--teal);transition:.16s}
+.sea-upsell-btn:hover{background:var(--teal);color:#fff}
+@media(max-width:640px){
+  /* stack the message + button inside the ticket body, keep the stub intact */
+  .j-seanote-wrap{left:12px;right:12px;width:auto;max-width:none}
+  .sea-upsell-main,.j-seanote-main{flex-wrap:wrap;gap:11px}
+  .sea-upsell-btn,.j-seanote-btn{margin-left:0;width:100%}
+  .sea-upsell-stub-lab,.j-seanote-stub-lab{display:none}
+  .sea-upsell-stub,.j-seanote-stub{width:64px}
+  .sea-upsell,.j-seanote{--seam:64px}
 }
