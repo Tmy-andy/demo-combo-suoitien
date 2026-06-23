@@ -157,16 +157,28 @@ function closeVR(){ setState({vr:null}); }
 function openExplore(id){ setState({exploreId:id||state.selectedId||state.recId||COMBOS[0].id}); }
 function closeExplore(){ setState({exploreId:null}); }
 
-function openJourney(id){ stopTimer(); setState({journey:{comboId:id,index:0,mode:'cinematic',playing:false,immersive:false}}); }
-function closeJourney(){ stopTimer(); closeMap(); setState({journey:null}); }
-function setMode(m){ setState({journey:{...state.journey,mode:m}}); }
-function jNext(){ if(!state.journey) return; const pl=playlist(state.journey); setState({journey:{...state.journey,index:Math.min(state.journey.index+1,pl.length-1)}}); }
-function jPrev(){ if(!state.journey) return; setState({journey:{...state.journey,index:Math.max(0,state.journey.index-1)}}); }
-function jGoto(i){ setState({journey:{...state.journey,index:i}}); }
-function toggleImmersive(){ setState({journey:{...state.journey,immersive:!state.journey.immersive}}); }
+/* Journey lives in its own host (#journeyHost) and is mounted ONCE per open,
+   then patched in place. This is what stops the whole VR screen — scene,
+   animations, the .screen rise — from rebuilding (and flashing white) on
+   every click. Journey actions mutate state.journey directly, then call
+   mountJourney() (full build) or patchJourney() (in-place update). */
+let jEntering=false;   // true only for the very first mount of a journey
+function mountJourney(){
+  const h=document.getElementById('journeyHost'); if(!h) return;
+  h.innerHTML = state.journey ? viewJourney() : '';
+  jEntering=false;
+}
+function openJourney(id){ stopTimer(); state.journey={comboId:id,index:0,mode:'cinematic',playing:false,immersive:false}; jEntering=true; mountJourney(); }
+function closeJourney(){ stopTimer(); closeMap(); state.journey=null; mountJourney(); }
+function setMode(m){ if(!state.journey||state.journey.mode===m) return; state.journey.mode=m; mountJourney(); }
+function jNext(){ if(!state.journey) return; const pl=playlist(state.journey); jGoto(Math.min(state.journey.index+1,pl.length-1)); }
+function jPrev(){ if(!state.journey) return; jGoto(Math.max(0,state.journey.index-1)); }
+function jGoto(i){ if(!state.journey||state.journey.index===i) return; state.journey.index=i; patchJourney(); }
+function toggleImmersive(){ if(!state.journey) return; state.journey.immersive=!state.journey.immersive; mountJourney(); }
 function togglePlay(){
-  const playing=!state.journey.playing;
-  setState({journey:{...state.journey,playing}});
+  if(!state.journey) return;
+  const playing=!state.journey.playing; state.journey.playing=playing;
+  patchPlayBtn();
   if(playing) startTimer(); else stopTimer();
 }
 function startTimer(){
@@ -174,12 +186,12 @@ function startTimer(){
   jTimer=setInterval(()=>{
     const j=state.journey; if(!j){ stopTimer(); return; }
     const pl=playlist(j);
-    if(j.index>=pl.length-1){ stopTimer(); setState({journey:{...state.journey,playing:false}}); return; }
+    if(j.index>=pl.length-1){ stopTimer(); j.playing=false; patchPlayBtn(); return; }
     jNext();
   },3800);
 }
 function stopTimer(){ if(jTimer){ clearInterval(jTimer); jTimer=null; } }
-function journeyBuy(){ const c=comboOf(state.journey.comboId); stopTimer(); closeMap(); setState({selectedId:c.id,journey:null}); toast('Đã chọn '+c.name); }
+function journeyBuy(){ const c=comboOf(state.journey.comboId); stopTimer(); closeMap(); state.journey=null; mountJourney(); setState({selectedId:c.id}); toast('Đã chọn '+c.name); }
 
 /* ---- expanded map modal: mounted outside #overlays so it never re-renders
    the journey screen (keeps the VR backdrop animation from restarting) ---- */
@@ -202,6 +214,62 @@ function mapGoto(i){
   });
   const ttl=root.querySelector('.map-mtitle'); if(ttl) ttl.textContent=cur.name+' · điểm '+human+'/'+total;
   const pip=root.querySelector('.piplabel'); if(pip) pip.innerHTML=lucide('pin','currentColor',14)+' '+esc(cur.name);
+  patchJourney();   // keep the screen underneath in sync for when the modal closes
+}
+
+/* in-place update of the journey screen when only the active index changes —
+   no innerHTML rebuild, so nothing flashes or replays. */
+function patchJourney(){
+  const j=state.journey; if(!j) return;
+  const root=document.getElementById('journeyHost'); if(!root) return;
+  const pl=playlist(j), i=j.index, cur=DEST[pl[i]], human=i+1, total=pl.length;
+  const cls=k=> k<i?'done':(k===i?'active':'next');
+  const set=(sel,fn)=>{ const el=root.querySelector(sel); if(el) fn(el); };
+
+  // cinematic centre title
+  set('.cine-ghost',el=>el.textContent=String(human).padStart(2,'0'));
+  set('.cine-title .kk',el=>el.textContent='Điểm dừng '+human+' / '+total);
+  set('.cine-title .big',el=>el.textContent=cur.name);
+  set('.cine-title .ty',el=>el.innerHTML='<span class="ty-line"></span>'+esc(cur.type));
+  // audio pill
+  set('.audiobox .nm',el=>el.textContent=cur.name);
+  // minimap dots
+  root.querySelectorAll('.minidot').forEach((el,k)=>{ el.className='minidot '+cls(k); });
+  // map-mode itinerary + pins + pip
+  root.querySelectorAll('.mapmode .itin').forEach((el,k)=>{ el.className='itin '+cls(k); });
+  root.querySelectorAll('.mapmode .bigpin').forEach((el,k)=>{
+    el.className='bigpin '+cls(k);
+    const lab=el.querySelector('.lab');
+    if(k===i){ if(!lab){ const s=document.createElement('span'); s.className='lab'; s.textContent=DEST[pl[k]].name; el.appendChild(s); } }
+    else if(lab){ lab.remove(); }
+  });
+  set('.mapmode .piplabel',el=>el.innerHTML=lucide('pin','currentColor',14)+' '+esc(cur.name));
+  // family mode
+  set('.fammode .mono',el=>el.textContent='Điểm '+human+' / '+total);
+  set('.fammode .famname',el=>el.textContent=cur.name);
+  set('.fammode .famtype',el=>el.textContent=cur.type);
+  set('.fam-audio',el=>el.dataset.id=pl[i]);
+  // dock: counter + progress + filmstrip frames
+  set('.j-counter b',el=>el.textContent=String(human).padStart(2,'0'));
+  set('.j-counter span',el=>el.textContent='/ '+String(total).padStart(2,'0'));
+  set('.j-strip-fill',el=>el.style.width=(total>1?(i/(total-1)*100):100).toFixed(1)+'%');
+  root.querySelectorAll('.j-frame').forEach((el,k)=>{
+    el.className='j-frame '+cls(k);
+    const st=cls(k);
+    const ic=el.querySelector('.fic');
+    if(ic) ic.innerHTML=svgIcon(DEST[pl[k]].icon, st==='active'?'var(--forest-2)':(st==='done'?'#fff':'#8FB29C'),15);
+  });
+  // keep the active frame in view
+  const act=root.querySelector('.j-frame.active');
+  if(act) act.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+}
+
+/* toggle the play/pause button label without touching anything else */
+function patchPlayBtn(){
+  const j=state.journey; if(!j) return;
+  const btn=document.querySelector('#journeyHost .j-play'); if(!btn) return;
+  btn.innerHTML=(j.playing?lucide('pause','currentColor',18,'currentColor'):lucide('play','currentColor',18,'currentColor'))
+    +'<span>'+(j.playing?'Dừng':'Tự động')+'</span>';
 }
 
 /* ---- event delegation ---- */
@@ -493,18 +561,83 @@ function viewToast(){
 const MODE_IC = { cinematic:'film', map:'map', family:'users' };
 
 /* ===================== VR VIEWER ===================== */
+/* short, human caption per destination type — gives the preview a voice
+   instead of exposing engine internals. Falls back to a generic line. */
+const VR_LINE = {
+  'Cổng chào':'Bước qua cổng, cõi tiên mở ra trước mắt.',
+  'Văn hoá':'Mái ngói, hoa văn, tiếng trống hội — kéo nhẹ để nhìn quanh.',
+  'Tâm linh':'Khói trầm vương trong nắng sớm. Hãy đứng lại một nhịp.',
+  'Cảnh quan':'Gió mát, tầm nhìn mở. Xoay 360° để thu trọn khung cảnh.',
+  'Di chuyển':'Lên toa, chuyến đi bắt đầu lăn bánh.',
+  'Thư giãn':'Một khoảng lặng dễ chịu giữa hành trình.',
+  'Trò chơi':'Tiếng cười, tốc độ và adrenaline đang chờ.',
+  'Biển':'Sóng, nắng và bãi cát — nghe cả tiếng nước.'
+};
+const vrLine = d => VR_LINE[d.type] || 'Kéo để nhìn quanh — toàn cảnh 360° đang chờ bạn.';
+
+/* layered 360° scene, seeded by id so each place gets a slightly different
+   skyline + mote scatter — feels handmade, not stock. Shared by the VR
+   viewer and the journey cinematic stage. */
+function vrScene(seed){
+  let s=0; for(const ch of String(seed)) s=(s*31+ch.charCodeAt(0))>>>0;
+  const rnd=()=>{ s=(s*1664525+1013904223)>>>0; return s/4294967296; };
+  let ridge='M0,150';
+  for(let x=0;x<=1200;x+=120){ ridge+=` L${x},${(96+rnd()*54).toFixed(0)}`; }
+  ridge+=' L1200,260 L0,260 Z';
+  let ridge2='M0,170';
+  for(let x=0;x<=1200;x+=150){ ridge2+=` L${x},${(128+rnd()*42).toFixed(0)}`; }
+  ridge2+=' L1200,260 L0,260 Z';
+  const motes=Array.from({length:11},()=>
+    `<span class="mote" style="left:${(rnd()*100).toFixed(1)}%;top:${(rnd()*72).toFixed(1)}%;animation-delay:${(rnd()*8).toFixed(1)}s;animation-duration:${(7+rnd()*7).toFixed(1)}s"></span>`).join('');
+  return `<div class="vr-scene">
+      <div class="vr-sky"></div>
+      <div class="vr-sun"></div>
+      <div class="vr-haze"></div>
+      <svg class="vr-ridge far" viewBox="0 0 1200 260" preserveAspectRatio="none"><path d="${ridge2}"/></svg>
+      <svg class="vr-ridge near" viewBox="0 0 1200 260" preserveAspectRatio="none"><path d="${ridge}"/></svg>
+      <div class="vr-motes">${motes}</div>
+      <div class="vr-grain"></div>
+    </div>`;
+}
+
 function viewVR(){
   if(!state.vr) return '';
   const d=DEST[state.vr.id];
+
   return `<div class="screen vr">
-    <div class="vrbg"></div>
-    <div class="vr-card">
-      <div class="overline" style="color:var(--lime);display:inline-flex;align-items:center;gap:9px"><span class="dotmk"></span>VR 360° · Xem trước</div>
-      <h2 class="serif" style="font-size:30px;color:#FCF8EE;margin:13px 0 5px">${esc(d.name)}</h2>
-      <div style="font-size:13px;color:var(--lime)">${esc(d.type)}</div>
-      <div class="panocode mono">pano_${esc(state.vr.id)}</div>
-      <p class="vr-note">Placeholder cảnh 360° — engine 3DVista sẽ render đè vào <b style="color:var(--lime)">#viewer</b> trong cùng cửa sổ.</p>
-      <button class="btn ghost-d" data-act="closeVR">${lucide('chevron-left','currentColor',16)} Quay lại combo</button>
+    ${vrScene(state.vr.id)}
+
+    <!-- top: exit + live 360° readout -->
+    <div class="vr-bar">
+      <button class="vr-back" data-act="closeVR">${lucide('chevron-left','currentColor',18)} Quay lại</button>
+      <span class="vr-live"><span class="vr-dot"></span>Đang xem trước · 360°</span>
+    </div>
+
+    <!-- center compass + drag hint, the human "look around" affordance -->
+    <div class="vr-look">
+      <div class="vr-ring">
+        <span class="vr-deg n">B</span><span class="vr-deg e">Đ</span>
+        <span class="vr-deg s">N</span><span class="vr-deg w">T</span>
+        <span class="vr-needle"></span>
+      </div>
+      <div class="vr-hint">${lucide('navigation','currentColor',15)} Kéo để nhìn quanh</div>
+    </div>
+
+    <!-- floating points of interest -->
+    <span class="vr-poi" style="left:30%;top:48%"></span>
+    <span class="vr-poi b" style="left:71%;top:39%"></span>
+
+    <!-- bottom glass plate: where you are + listen -->
+    <div class="vr-plate">
+      <div class="vr-meta">
+        <div class="vr-kick"><span class="vr-pin">${lucide('pin','currentColor',13)}</span>${esc(d.type)}</div>
+        <h2 class="serif vr-name">${esc(d.name)}</h2>
+        <p class="vr-say">${esc(vrLine(d))}</p>
+      </div>
+      <button class="vr-listen" data-act="audio" data-id="${state.vr.id}">
+        <span class="vr-listen-ic">${lucide('volume','currentColor',18)}</span>
+        <span>Nghe<br><b>giới thiệu</b></span>
+      </button>
     </div>
   </div>`;
 }
@@ -577,12 +710,13 @@ function viewJourney(){
 
   const stepState=i=> i<j.index?'done':(i===j.index?'active':'next');
 
-  // timeline chips
+  // filmstrip frames — each stop is a little frame, current one lit
   const timeline=pl.map((id,i)=>{
-    const st=stepState(i);
-    return `<button class="tl-step ${st}" data-act="jGoto" data-i="${i}">
-      <span class="n">${i+1}</span>
-      <span class="nm">${esc(DEST[id].name)}</span>
+    const st=stepState(i), d=DEST[id];
+    return `<button class="j-frame ${st}" data-act="jGoto" data-i="${i}" title="${esc(d.name)}">
+      <span class="fic">${svgIcon(d.icon,st==='active'?'var(--forest-2)':(st==='done'?'#fff':'#8FB29C'),15)}</span>
+      <span class="fno mono">${String(i+1).padStart(2,'0')}</span>
+      <span class="fnm">${esc(d.name)}</span>
     </button>`;
   }).join('');
 
@@ -609,31 +743,40 @@ function viewJourney(){
 
   const audioWave=`<span class="wave">${'<i></i>'.repeat(5)}</span>`;
 
-  return `<div class="screen journey">
-    <!-- top bar -->
-    <div class="j-top" style="display:${imm?'none':'flex'}">
-      <button class="j-ghost" data-act="closeJourney">${lucide('chevron-left','currentColor',16)} Thoát</button>
-      <div class="j-title">
-        <div class="mono kk">${esc(c.group)} · Hành trình 360°</div>
-        <div class="serif nm">${esc(c.name)}</div>
+  return `<div class="screen journey${jEntering?' j-enter':''}">
+    <!-- header: exit + combo (left) · mode switch (center) · buy (right), one row -->
+    <div class="j-head" style="display:${imm?'none':'flex'}">
+      <div class="j-lead">
+        <button class="j-exit" data-act="closeJourney" title="Thoát">${lucide('arrow-left','currentColor',17)}</button>
+        <span class="j-divider"></span>
+        <div class="j-headline">
+          <span class="j-grp mono">${esc(c.group)} · Hành trình 360°</span>
+          <span class="serif j-cname">${esc(c.name)}</span>
+        </div>
       </div>
-      <button class="btn" style="background:var(--lime);color:var(--forest-2);padding:9px 16px;font-size:13px" data-act="jBuy">Mua combo</button>
-    </div>
-
-    <!-- mode tabs -->
-    <div class="j-tabs" style="display:${imm?'none':'flex'}">
-      ${[['cinematic','Điện ảnh'],['map','Bản đồ'],['family','Gia đình']].map(([m,lab])=>
-        `<button class="j-tab ${j.mode===m?'on':''}" data-act="mode" data-mode="${m}">${lucide(MODE_IC[m],j.mode===m?'var(--forest-2)':'#CFE3D2',15)}${lab}</button>`).join('')}
+      <div class="j-rail">
+        ${[['cinematic','Điện ảnh'],['map','Bản đồ'],['family','Gia đình']].map(([m,lab])=>
+          `<button class="j-mode ${j.mode===m?'on':''}" data-act="mode" data-mode="${m}" title="${lab}">
+            ${lucide(MODE_IC[m],j.mode===m?'var(--forest-2)':'#BFD9C5',16)}
+            <span class="j-mlab">${lab}</span>
+          </button>`).join('')}
+      </div>
+      <div class="j-rail-end">
+        <button class="j-buy" data-act="jBuy"><span>Mua combo</span>${lucide('arrow-right','currentColor',15)}</button>
+      </div>
     </div>
 
     <!-- stage -->
     <div class="j-stage">
-      <div class="vrbg slow"></div>
-      <!-- cinematic center title -->
+      ${vrScene(c.id)}
+      <div class="j-vignette"></div>
+      <div class="j-glow"></div>
+      <!-- cinematic center title, poster-style with a ghost index numeral -->
       <div class="cine-title" style="display:${cine?'block':'none'}">
-        <div class="mono kk">Đang xem điểm ${human}/${total}</div>
+        <span class="cine-ghost serif">${String(human).padStart(2,'0')}</span>
+        <div class="mono kk">Điểm dừng ${human} / ${total}</div>
         <div class="serif big">${esc(cur.name)}</div>
-        <div class="ty">${esc(cur.type)}</div>
+        <div class="ty"><span class="ty-line"></span>${esc(cur.type)}</div>
       </div>
       <span class="hotspot" style="display:${cine?'block':'none'};left:34%;top:54%"></span>
       <span class="hotspot d" style="display:${cine?'block':'none'};left:66%;top:44%"></span>
@@ -691,15 +834,20 @@ function viewJourney(){
       <button class="j-fab" style="display:${imm?'flex':'none'}" data-act="immersive">${lucide('maximize','currentColor',22)}</button>
     </div>
 
-    <!-- timeline -->
-    <div class="j-timeline" style="display:${(cine||map)&&!imm?'flex':'none'}">
-      <div class="tl-bar"><span class="mono" style="font-size:12px;color:#9DBCA9">${human} / ${total}</span><div class="tl-track"><div class="tl-fill" style="width:${progress}"></div></div></div>
-      <div class="tl-steps">${timeline}</div>
-      <div class="tl-actions">
-        <button class="btn" style="background:var(--green);color:#fff" data-act="jPlay">${j.playing?lucide('pause','currentColor',14,'currentColor')+' Tạm dừng':lucide('play','currentColor',14,'currentColor')+' Tự động'}</button>
-        <button class="j-ghost-btn" data-act="jPrev">${lucide('chevron-left','currentColor',15)} Trước</button>
-        <button class="j-ghost-btn" data-act="jNext">Tiếp ${lucide('chevron-right','currentColor',15)}</button>
-        <button class="j-ghost-btn" style="color:var(--lime)" data-act="immersive">${lucide('maximize','currentColor',15)} Toàn cảnh</button>
+    <!-- dock: control cluster + filmstrip of stops -->
+    <div class="j-dock" style="display:${(cine||map)&&!imm?'flex':'none'}">
+      <div class="j-controls">
+        <button class="j-circ" data-act="jPrev" title="Điểm trước">${lucide('chevron-left','currentColor',20)}</button>
+        <button class="j-play" data-act="jPlay">${j.playing?lucide('pause','currentColor',18,'currentColor'):lucide('play','currentColor',18,'currentColor')}<span>${j.playing?'Dừng':'Tự động'}</span></button>
+        <button class="j-circ" data-act="jNext" title="Điểm sau">${lucide('chevron-right','currentColor',20)}</button>
+        <button class="j-circ ghost" data-act="immersive" title="Toàn cảnh">${lucide('maximize','currentColor',17)}</button>
+      </div>
+      <div class="j-strip-wrap">
+        <div class="j-counter mono"><b>${String(human).padStart(2,'0')}</b><span>/ ${String(total).padStart(2,'0')}</span></div>
+        <div class="j-strip">
+          <div class="j-strip-line"><span class="j-strip-fill" style="width:${progress}"></span></div>
+          ${timeline}
+        </div>
       </div>
     </div>
   </div>`;
@@ -764,7 +912,7 @@ function render(){
   const qb=document.getElementById('quizBody'); if(qb) qb.innerHTML=viewQuizBody();
   const cg=document.getElementById('comboGrid'); if(cg) cg.innerHTML=renderCombos();
   const bs=document.getElementById('buyslot'); if(bs){ bs.innerHTML=viewBuybar(); measureChrome(); }
-  const ov=document.getElementById('overlays'); if(ov) ov.innerHTML=viewSheet()+viewExplore()+viewJourney()+viewVR()+viewToast();
+  const ov=document.getElementById('overlays'); if(ov) ov.innerHTML=viewSheet()+viewExplore()+viewVR()+viewToast();
 }
 
 /* keep hero height = viewport minus the sticky topbar & fixed buy bar */
@@ -808,6 +956,7 @@ function mount(){
     `<div style="overflow-x:hidden">` + viewHero() + viewCombosShell() + `</div>` +
     `<div id="buyslot"></div>` +
     `<div id="overlays"></div>` +
+    `<div id="journeyHost"></div>` +
     `<div id="mapModal"></div>`;
   render();
   measureChrome();
