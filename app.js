@@ -840,7 +840,6 @@ function viewJourney(){
         <button class="j-circ" data-act="jPrev" title="Điểm trước">${lucide('chevron-left','currentColor',20)}</button>
         <button class="j-play" data-act="jPlay">${j.playing?lucide('pause','currentColor',18,'currentColor'):lucide('play','currentColor',18,'currentColor')}<span>${j.playing?'Dừng':'Tự động'}</span></button>
         <button class="j-circ" data-act="jNext" title="Điểm sau">${lucide('chevron-right','currentColor',20)}</button>
-        <button class="j-circ ghost" data-act="immersive" title="Toàn cảnh">${lucide('maximize','currentColor',17)}</button>
       </div>
       <div class="j-strip-wrap">
         <div class="j-counter mono"><b>${String(human).padStart(2,'0')}</b><span>/ ${String(total).padStart(2,'0')}</span></div>
@@ -849,6 +848,7 @@ function viewJourney(){
           ${timeline}
         </div>
       </div>
+      <button class="j-circ ghost j-full" data-act="immersive" title="Toàn cảnh">${lucide('maximize','currentColor',17)}</button>
     </div>
   </div>`;
 }

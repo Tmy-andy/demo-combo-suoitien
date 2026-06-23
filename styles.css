@@ -715,6 +715,7 @@ svg{vertical-align:-0.15em}
   border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);backdrop-filter:blur(6px);transition:.16s}
 .j-circ:hover{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.4)}
 .j-circ.ghost{color:var(--lime)}
+.j-full{flex:none;align-self:flex-end}
 .j-play{display:inline-flex;align-items:center;gap:9px;cursor:pointer;font-family:inherit;font-weight:700;font-size:14px;
   color:var(--forest-2);background:var(--lime);border:none;border-radius:999px;padding:13px 22px;
   box-shadow:0 12px 28px -8px rgba(140,198,63,.55);transition:.16s}
@@ -743,7 +744,9 @@ svg{vertical-align:-0.15em}
 .j-frame.active .fno{color:var(--forest-2);opacity:.7}
 .j-frame.active .fnm{color:var(--forest-2);font-weight:700;-webkit-line-clamp:1;line-clamp:1}
 @media(max-width:720px){
-  .j-dock{flex-direction:column-reverse;align-items:stretch}
+  .j-dock{flex-direction:column-reverse;align-items:stretch;position:relative}
   .j-controls{justify-content:center}
   .j-counter{flex-direction:row;align-items:baseline;gap:6px}
+  /* keep Toàn cảnh pinned to the right edge instead of on its own row */
+  .j-full{position:absolute;right:clamp(16px,4vw,34px);bottom:clamp(16px,2.6vw,24px)}
 }
