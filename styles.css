@@ -933,15 +933,22 @@ svg{vertical-align:-0.15em}
 .j-seanote-wrap.confirming{animation:seanoteTear .6s cubic-bezier(.4,0,.6,1) .55s forwards;pointer-events:none}
 
 /* corner stamps — sit half outside the card like the "GỢI Ý CHO BẠN" stamp */
-.j-seanote-stamp{position:absolute;top:-12px;right:18px;z-index:3;font-size:10px;font-weight:600;
-  letter-spacing:.14em;color:var(--orange);border:2px solid var(--orange);border-radius:6px;
-  padding:5px 9px;background:var(--card);transform:rotate(-7deg);transform-origin:center;
+.j-seanote-stamp{position:absolute;top:-14px;right:16px;z-index:3;
+  font-family:var(--mono);font-size:16px;font-weight:800;
+  letter-spacing:.12em;color:var(--orange);border:2.5px solid var(--orange);border-radius:8px;
+  padding:6px 13px;background:var(--card);transform:rotate(-7deg);transform-origin:center;
   animation:stampPress .5s cubic-bezier(.3,1.4,.5,1) .28s both}
-.j-seanote-stamp.added{color:var(--green);border-color:var(--green);opacity:0;pointer-events:none;animation:none}
+/* "Đã thêm" stamp: big, transparent fill, slammed onto the bottom-right corner
+   of the ticket, bleeding past the edge — matches the combo card stamp */
+.j-seanote-stamp.added{top:auto;right:-8px;bottom:-14px;z-index:6;
+  font-family:var(--mono);font-size:24px;font-weight:800;letter-spacing:.1em;
+  color:#D33A2C;border:3px solid #D33A2C;border-radius:9px;padding:5px 14px;
+  background:transparent;opacity:0;pointer-events:none;
+  transform:rotate(-9deg);transform-origin:center;animation:none}
 @media(prefers-reduced-motion:reduce){
   .j-seanote-stamp,.sea-upsell-stamp{animation:none}
 }
-.j-seanote-wrap.confirming .j-seanote-stamp:not(.added){opacity:0}
+.j-seanote-wrap.confirming .j-seanote-stamp:not(.added){opacity:0;animation:none}
 .j-seanote-wrap.confirming .j-seanote-stamp.added{animation:stampSwap .44s cubic-bezier(.2,.9,.3,1) both}
 
 .j-seanote{display:flex;align-items:stretch;border-radius:12px;background:var(--card);
