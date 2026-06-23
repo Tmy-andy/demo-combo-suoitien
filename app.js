@@ -65,7 +65,8 @@ const LUCIDE = {
   "chevron-left":"<path d=\"m15 18-6-6 6-6\"/>",
   "chevron-right":"<path d=\"m9 18 6-6-6-6\"/>",
   pause:"<rect x=\"14\" y=\"3\" width=\"5\" height=\"18\" rx=\"1\"/><rect x=\"5\" y=\"3\" width=\"5\" height=\"18\" rx=\"1\"/>",
-  maximize:"<path d=\"M8 3H5a2 2 0 0 0-2 2v3\"/><path d=\"M21 8V5a2 2 0 0 0-2-2h-3\"/><path d=\"M3 16v3a2 2 0 0 0 2 2h3\"/><path d=\"M16 21h3a2 2 0 0 0 2-2v-3\"/>"
+  maximize:"<path d=\"M8 3H5a2 2 0 0 0-2 2v3\"/><path d=\"M21 8V5a2 2 0 0 0-2-2h-3\"/><path d=\"M3 16v3a2 2 0 0 0 2 2h3\"/><path d=\"M16 21h3a2 2 0 0 0 2-2v-3\"/>",
+  ticket:"<path d=\"M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z\"/><path d=\"M13 5v2\"/><path d=\"M13 17v2\"/><path d=\"M13 11v2\"/>"
 };
 /* render a Lucide icon by name into the shared stroke wrapper */
 const lucide = (name,stroke,sz=16,fill='none') =>
@@ -877,9 +878,15 @@ function viewJourney(){
             <span class="j-mlab">${lab}</span>
           </button>`).join('')}
       </div>
-      <div class="j-rail-end">
-        <button class="j-buy" data-act="jBuy"><span>Mua combo</span>${lucide('arrow-right','currentColor',15)}</button>
-      </div>
+      <button class="j-buy" data-act="jBuy">
+        <span class="j-buy-shine"></span>
+        <span class="j-buy-ic">${lucide('ticket','currentColor',17)}</span>
+        <span class="j-buy-txt">
+          <span class="j-buy-kicker mono">Sẵn sàng đi chơi?</span>
+          <span class="j-buy-main">Mua vé combo <b class="j-buy-name">${esc(c.name)}</b></span>
+        </span>
+        ${lucide('arrow-right','currentColor',16)}
+      </button>
     </div>
 
     <!-- stage -->

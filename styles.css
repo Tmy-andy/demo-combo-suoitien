@@ -726,6 +726,7 @@ svg{vertical-align:-0.15em}
   gap:16px;padding:clamp(14px,2.4vw,22px) clamp(16px,4vw,34px);
   background:linear-gradient(rgba(3,12,7,.55),transparent);pointer-events:none}
 .j-head>*{pointer-events:auto}
+/* left cluster: exit + divider + title on one row */
 .j-lead{flex:1 1 0;display:flex;align-items:center;gap:14px;min-width:0}
 .j-rail-end{flex:1 1 0;display:flex;justify-content:flex-end}
 .j-exit{flex:none;display:grid;place-items:center;width:42px;height:42px;border-radius:50%;cursor:pointer;
@@ -735,15 +736,48 @@ svg{vertical-align:-0.15em}
 .j-headline{min-width:0;display:flex;flex-direction:column;gap:2px}
 .j-grp{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--lime)}
 .j-cname{font-size:clamp(17px,2.4vw,24px);color:#FCF8EE;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.15}
-.j-buy{flex:none;display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-family:inherit;font-weight:600;font-size:13.5px;
-  color:#F4EEDF;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.24);border-radius:999px;
-  padding:11px 14px 11px 20px;white-space:nowrap;backdrop-filter:blur(8px);transition:.18s}
-.j-buy:hover{background:var(--lime);border-color:var(--lime);color:var(--forest-2);box-shadow:0 14px 30px -8px rgba(140,198,63,.7)}
-.j-buy svg{transition:transform .18s}
-.j-buy:hover svg{transform:translateX(3px)}
+/* --- buy combo: lime CTA, placed just under the combo title (flush left) --- */
+.j-buy{position:absolute;left:clamp(16px,4vw,34px);top:clamp(70px,9vw,86px);z-index:9;
+  flex:none;display:inline-flex;align-items:center;gap:13px;cursor:pointer;
+  font-family:inherit;color:var(--forest-2);
+  background:linear-gradient(135deg,#B6EF42 0%,var(--lime) 52%,#7BB52F 100%);
+  border:1px solid rgba(255,255,255,.32);border-radius:999px;
+  padding:11px 22px 11px 13px;white-space:nowrap;
+  box-shadow:0 12px 30px -10px rgba(156,216,63,.9),0 2px 0 rgba(255,255,255,.4) inset;
+  transition:transform .18s,box-shadow .18s,filter .18s;
+  animation:jbuyPoke 1.3s cubic-bezier(.34,1.56,.64,1) infinite;will-change:transform}
+/* continuous pulse ring — radiates outward forever to catch the eye */
+.j-buy::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  box-shadow:0 0 0 0 rgba(156,216,63,.6);animation:jbuyRing 2s ease-out infinite}
+.j-buy::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  box-shadow:0 0 0 0 rgba(156,216,63,.4);animation:jbuyRing 2s ease-out 1s infinite}
+.j-buy:hover{animation:none;transform:translateX(3px) scale(1.03);filter:brightness(1.05);
+  box-shadow:0 18px 38px -10px rgba(156,216,63,1),0 2px 0 rgba(255,255,255,.45) inset}
+.j-buy:active{transform:translateX(0) scale(.99)}
+.j-buy-ic{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;
+  background:rgba(7,46,26,.16);color:var(--forest-2)}
+.j-buy-txt{display:flex;flex-direction:column;align-items:flex-start;line-height:1.1;text-align:left;gap:3px}
+.j-buy-kicker{font-size:13px;letter-spacing:.12em;text-transform:uppercase;opacity:.75;font-weight:700}
+.j-buy-main{font-size:16px;font-weight:600;white-space:nowrap;opacity:.92}
+/* the combo name itself reads loudest — bigger serif, tucked just below the lead-in */
+.j-buy-name{display:inline-block;font-family:"Lora",Georgia,serif;font-weight:700;font-style:italic;
+  font-size:20px;letter-spacing:.01em;line-height:1}
+.j-buy>svg{flex:none;animation:jbuyPokeArrow 1.3s cubic-bezier(.34,1.56,.64,1) infinite}
+.j-buy:hover>svg{animation:none;transform:translateX(4px)}
+.j-buy-shine{display:none}
+/* "chọt chọt": quick double jab to the right, then settle back */
+@keyframes jbuyPoke{0%,55%,100%{transform:translateX(0)}68%{transform:translateX(5px)}81%{transform:translateX(1px)}90%{transform:translateX(4px)}}
+@keyframes jbuyPokeArrow{0%,55%,100%{transform:translateX(0)}68%{transform:translateX(4px)}81%{transform:translateX(1px)}90%{transform:translateX(3px)}}
+@keyframes jbuyRing{0%{box-shadow:0 0 0 0 rgba(156,216,63,.55)}80%,100%{box-shadow:0 0 0 16px rgba(156,216,63,0)}}
+@media(prefers-reduced-motion:reduce){
+  .j-buy,.j-buy::before,.j-buy::after,.j-buy>svg{animation:none}
+}
 
-/* --- mode switch: pill group sitting inline in the header row --- */
-.j-rail{flex:none;display:flex;align-items:center;gap:5px;padding:5px;border-radius:999px;
+/* --- mode switch: pinned to the horizontal centre of the header,
+   aligned with the first (title) row so the taller left cluster
+   (title + buy CTA below it) doesn't shove it off-centre --- */
+.j-rail{position:absolute;left:50%;top:clamp(14px,2.4vw,22px);transform:translateX(-50%);
+  flex:none;display:flex;align-items:center;gap:5px;padding:5px;border-radius:999px;
   background:rgba(3,16,9,.42);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12)}
 .j-mode{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-family:inherit;font-weight:600;
   font-size:13.5px;color:#BFD9C5;background:transparent;border:none;border-radius:999px;padding:9px 17px;
@@ -770,19 +804,26 @@ svg{vertical-align:-0.15em}
    back to the bottom.
    ====================================================== */
 @media(max-width:600px){
-  /* header wraps: exit + name on top, switch + buy below */
-  .j-head{flex-wrap:wrap;gap:10px 8px;padding:12px 14px}
-  .j-lead{flex:1 1 100%;gap:10px}
+  /* header stacks: exit + title (row 1) · mode switch (row 2) · buy CTA (row 3).
+     The three direct children of .j-head (lead, rail, buy) each take a full
+     row in DOM order: title → mode switch → buy CTA. */
+  .j-head{flex-direction:column;align-items:stretch;gap:11px;padding:12px 14px}
+  .j-lead{flex:0 0 auto;gap:10px}
   .j-divider{display:none}
   .j-cname{font-size:16px}
   .j-grp{font-size:9px;letter-spacing:.14em}
   .j-exit{width:38px;height:38px}
-  .j-rail{flex:0 0 auto;order:2;gap:4px;padding:4px}
-  .j-rail-end{flex:1 1 auto;order:3}
-  .j-buy{padding:9px 14px;font-size:12.5px;gap:6px}
+  /* row 2: mode switch back into normal flow, aligned left */
+  .j-rail{position:static;transform:none;align-self:flex-start;flex:0 0 auto;gap:4px;padding:4px}
+  /* row 3: buy CTA back into normal flow, flush left, sized to content */
+  .j-buy{position:static;align-self:flex-start;width:max-content;max-width:100%;
+    justify-content:flex-start;padding:8px 14px 8px 9px;gap:8px}
+  .j-buy-ic{width:26px;height:26px}
+  .j-buy-kicker{display:none}
+  .j-buy-main{font-size:16px;white-space:normal}
 
-  /* title clears the two-row header */
-  .cine-title{top:clamp(150px,24vh,180px);width:min(94%,560px)}
+  /* title clears the taller three-row header (title · rail · buy) */
+  .cine-title{top:clamp(186px,28vh,212px);width:min(94%,560px)}
   .cine-ghost{font-size:clamp(96px,34vw,150px)}
   .cine-title .big{font-size:clamp(28px,8vw,44px)}
 
@@ -840,7 +881,7 @@ svg{vertical-align:-0.15em}
 .hotspot.d::before{animation-delay:1.1s}
 @keyframes hsRing{0%{transform:scale(.5);opacity:.9}100%{transform:scale(1.9);opacity:0}}
 
-.minimap{position:absolute;top:clamp(92px,10vh,112px);right:clamp(12px,3vw,24px);width:clamp(150px,20vw,250px);
+.minimap{position:absolute;top:clamp(14px,2.4vw,22px);right:clamp(12px,3vw,24px);width:clamp(150px,20vw,250px);
   background:rgba(8,48,28,.78);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px;z-index:5;backdrop-filter:blur(6px);
   cursor:pointer;transition:transform .18s,border-color .18s,box-shadow .18s}
 .minimap:hover{transform:translateY(-2px);border-color:rgba(140,198,63,.55);box-shadow:0 10px 26px rgba(0,0,0,.35)}
@@ -1082,7 +1123,8 @@ svg{vertical-align:-0.15em}
   100%{opacity:1;transform:rotate(-7deg) scale(1)}
 }
 
-.j-seanote-wrap{position:absolute;left:clamp(16px,3vw,30px);top:clamp(70px,9vw,88px);z-index:12;
+/* pushed lower so it clears the buy CTA now sitting under the combo title */
+.j-seanote-wrap{position:absolute;left:clamp(16px,3vw,30px);top:clamp(132px,15vw,156px);z-index:12;
   width:max-content;max-width:min(560px,calc(100% - 32px))}
 .j-seanote-wrap.confirming{animation:seanoteTear .6s cubic-bezier(.4,0,.6,1) .55s forwards;pointer-events:none}
 
@@ -1176,7 +1218,7 @@ svg{vertical-align:-0.15em}
 @media(max-width:640px){
   /* stack the message + button inside the ticket body, keep the stub intact.
      pushed down so it clears the taller two-row mobile header */
-  .j-seanote-wrap{left:12px;right:12px;top:116px;width:auto;max-width:none}
+  .j-seanote-wrap{left:12px;right:12px;top:210px;width:auto;max-width:none}
   .sea-upsell-main,.j-seanote-main{flex-wrap:wrap;gap:11px}
   .sea-upsell-btn,.j-seanote-btn{margin-left:0;width:100%}
   .sea-upsell-stub-lab,.j-seanote-stub-lab{display:none}
