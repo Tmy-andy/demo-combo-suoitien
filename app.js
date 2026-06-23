@@ -172,6 +172,13 @@ function qty(type,delta){
   if(type==='adult') adults=Math.max(1,adults+delta); else children=Math.max(0,children+delta);
   setState({adults,children});
 }
+/* let buyers type a count directly (handy for big group bookings — vài chục vé).
+   parse digits, clamp to a sane range, then re-render so total updates. */
+function qtySet(type,raw){
+  const n=parseInt(String(raw).replace(/\D/g,''),10);
+  if(type==='adult') setState({adults:isNaN(n)?1:Math.min(999,Math.max(1,n))});
+  else               setState({children:isNaN(n)?0:Math.min(999,Math.max(0,n))});
+}
 function buy(){
   if(!state.selectedId){ toast('Hãy chọn một combo trước nhé'); window.scrollTo({top:0,behavior:'smooth'}); return; }
   toast('Đã thêm '+comboOf(state.selectedId).name+' vào giỏ — demo UI');
@@ -350,11 +357,26 @@ document.addEventListener('click', e=>{
 });
 document.addEventListener('keydown', e=>{
   if(e.key!=='Enter'&&e.key!==' ') return;
+  // don't hijack typing inside the quantity inputs
+  if(e.target.closest('input.v[data-qty]')) return;
   const sea=e.target.closest('.addon[data-act="sea"]');
   if(sea){ e.preventDefault(); e.stopPropagation(); toggleSea(sea.dataset.id); return; }
   const t=e.target.closest('[data-key]'); if(!t) return;
   e.preventDefault(); selectCombo(t.dataset.id);
 });
+/* quantity inputs: select-all on focus (easy overtype), commit on Enter,
+   and commit on change/blur. Updates state only on commit so the live
+   re-render never yanks the caret out mid-typing. */
+document.addEventListener('focusin', e=>{
+  const q=e.target.closest('input.v[data-qty]'); if(q) q.select();
+});
+document.addEventListener('change', e=>{
+  const q=e.target.closest('input.v[data-qty]'); if(q) qtySet(q.dataset.qty,q.value);
+});
+document.addEventListener('keydown', e=>{
+  if(e.key!=='Enter') return;
+  const q=e.target.closest('input.v[data-qty]'); if(q) q.blur();
+}, true);
 
 /* ============================================================
    VIEW
@@ -560,23 +582,31 @@ function viewBuybar(){
     <div class="buybar-wrap">
       ${info}
       <div class="buy-right">
-        <div class="stepper">
-          <span class="cap">Người lớn</span>
-          <button data-act="adultSub">${lucide('minus','currentColor',16)}</button>
-          <span class="v">${state.adults}</span>
-          <button data-act="adultAdd">${lucide('plus','currentColor',16)}</button>
+        <div class="stepper-row">
+          <div class="stepper">
+            <span class="cap">Người lớn</span>
+            <div class="step-ctrl">
+              <button data-act="adultSub">${lucide('minus','currentColor',16)}</button>
+              <input class="v" type="text" inputmode="numeric" value="${state.adults}" data-qty="adult" aria-label="Số người lớn">
+              <button data-act="adultAdd">${lucide('plus','currentColor',16)}</button>
+            </div>
+          </div>
+          <div class="stepper" style="opacity:${childLocked?.4:1}">
+            <span class="cap">Trẻ em</span>
+            <div class="step-ctrl">
+              <button data-act="childSub">${lucide('minus','currentColor',16)}</button>
+              <input class="v" type="text" inputmode="numeric" value="${children}"${childLocked?' disabled':''} data-qty="child" aria-label="Số trẻ em">
+              <button data-act="childAdd">${lucide('plus','currentColor',16)}</button>
+            </div>
+          </div>
         </div>
-        <div class="stepper" style="opacity:${childLocked?.4:1}">
-          <span class="cap">Trẻ em</span>
-          <button data-act="childSub">${lucide('minus','currentColor',16)}</button>
-          <span class="v">${children}</span>
-          <button data-act="childAdd">${lucide('plus','currentColor',16)}</button>
+        <div class="buy-cta">
+          <div class="total">
+            <div class="cap">Tổng tạm tính</div>
+            <div class="v">${fmt(total)}</div>
+          </div>
+          <button class="btn btn-fill" style="padding:13px 26px;font-size:15px" data-act="buy">Mua vé</button>
         </div>
-        <div class="total">
-          <div class="cap">Tổng tạm tính</div>
-          <div class="v">${fmt(total)}</div>
-        </div>
-        <button class="btn btn-fill" style="padding:13px 26px;font-size:15px" data-act="buy">Mua vé</button>
       </div>
     </div>
   </div>`;
@@ -758,7 +788,7 @@ function viewExplore(){
         <span style="margin-left:auto;color:var(--muted)">${ids.length} điểm · không theo thứ tự, tuỳ bạn</span>
       </div>
       ${sea?'':`<div class="sea-upsell-wrap">
-        <span class="sea-upsell-stamp mono">Chưa gồm</span>
+        <span class="sea-upsell-stamp mono">CHƯA BAO GỒM</span>
         <div class="sea-upsell">
           <div class="sea-upsell-stub">
             <span class="sea-upsell-ic">${lucide('water','currentColor',20)}</span>
@@ -859,7 +889,7 @@ function viewJourney(){
       <div class="j-glow"></div>
       <!-- sea up-sell: shown while previewing a Biển Tiên Đồng spot without the add-on -->
       <div class="j-seanote-wrap" style="display:${showSeaNote?'block':'none'}">
-        <span class="j-seanote-stamp mono">Chưa gồm</span>
+        <span class="j-seanote-stamp mono">CHƯA BAO GỒM</span>
         <span class="j-seanote-stamp added mono">Đã thêm ✓</span>
         <div class="j-seanote">
           <div class="j-seanote-stub">
@@ -952,9 +982,11 @@ function viewJourney(){
       </div>
       <div class="j-strip-wrap">
         <div class="j-counter mono"><b>${String(human).padStart(2,'0')}</b><span>/ ${String(total).padStart(2,'0')}</span></div>
-        <div class="j-strip">
+        <div class="j-strip-col">
           <div class="j-strip-line"><span class="j-strip-fill" style="width:${progress}"></span></div>
-          ${timeline}
+          <div class="j-strip">
+            ${timeline}
+          </div>
         </div>
       </div>
     </div>

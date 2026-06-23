@@ -26,7 +26,10 @@ body{
   font-family:"Be Vietnam Pro",system-ui,sans-serif;
   background:var(--paper);
   color:var(--ink);
-  padding-bottom:108px;
+  /* clear the fixed buybar (measured into --buybar at runtime) so the last bit
+     of content isn't hidden behind it when scrolled to the very bottom; the
+     +24px is breathing room and the fallback covers first paint before measure */
+  padding-bottom:calc(var(--buybar,108px) + 24px);
   -webkit-font-smoothing:antialiased;
   text-rendering:optimizeLegibility;
   line-height:1.5;
@@ -438,38 +441,67 @@ svg{vertical-align:-0.15em}
 .buy-info .sea{font-size:11.5px;color:#BFD3B8}
 .buy-empty{font-size:13.5px;color:#C3CFC0;max-width:230px}
 .buy-right{display:flex;align-items:center;gap:20px;margin-left:auto;flex-wrap:wrap}
+/* wrappers are transparent on desktop (children flow straight into buy-right's
+   flex row); they only become real rows in the phone layout below */
+.stepper-row,.buy-cta{display:contents}
 .stepper{display:flex;align-items:center;gap:9px}
+.stepper .step-ctrl{display:flex;align-items:center;gap:9px}
 .stepper .cap{font-size:12px;color:#BFD3B8}
 .stepper button{width:30px;height:30px;border-radius:8px;border:1.5px solid rgba(252,248,238,.45);background:transparent;color:#FCF8EE;font-size:18px;cursor:pointer;line-height:1}
 .stepper button:hover{background:rgba(252,248,238,.12)}
-.stepper .v{min-width:20px;text-align:center;font-size:15px;font-weight:600}
+/* the count is an editable input (tap to type a big number for groups) styled
+   to read like plain text — no input chrome, centered, inherits the bar color */
+.stepper input.v{width:34px;min-width:20px;text-align:center;font-size:15px;font-weight:600;
+  font-family:inherit;color:#FCF8EE;background:transparent;border:none;border-radius:6px;
+  padding:2px 0;-moz-appearance:textfield;appearance:textfield;cursor:text}
+.stepper input.v::-webkit-outer-spin-button,
+.stepper input.v::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.stepper input.v:focus{outline:none;background:rgba(252,248,238,.14);box-shadow:0 0 0 1.5px rgba(140,198,63,.5)}
+.stepper input.v:disabled{color:inherit;-webkit-text-fill-color:currentColor}
 .total{text-align:right}
 .total .cap{font-size:10.5px;color:#BFD3B8;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase}
 .total .v{font-size:24px;font-weight:700;font-family:"Lora",serif}
 .note{max-width:1200px;margin:0 auto;padding:0 clamp(16px,4vw,44px) 9px;font-size:11.5px;color:#BFD3B8}
 
 /* --- buybar · phone layout ---
-   The desktop single row wraps into a mess on a phone, so we stack it:
-   row 1 = combo info (full width); row 2 = the two steppers + running total;
-   row 3 = a full-width "Mua vé" primary button. */
+   Kept deliberately compact (≈2 short rows) so it doesn't eat the screen:
+     • the combo info line is dropped — the combo card right above already
+       shows the name/price, so repeating it here just wastes height
+     • the two steppers share ONE row as side-by-side compact pills, each
+       showing a short label over the −/value/+ control
+     • total + "Mua vé" share the last row: price on the left, button right */
 @media(max-width:560px){
-  .buybar-wrap{padding:10px 16px 12px;gap:10px;align-items:stretch}
-  .buy-info,.buy-empty{flex:1 1 100%;min-width:0}
-  .buy-info .nm{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .buy-info .grp{font-size:9px}
-  .buy-empty{font-size:13px;max-width:none}
+  .buybar-wrap{padding:9px 14px 11px;gap:8px;align-items:stretch}
+  /* combo info is redundant with the card above — hide it, keep only the
+     "chưa chọn combo" hint when nothing is selected */
+  .buy-info{display:none}
+  .buy-empty{flex:1 1 100%;min-width:0;font-size:12.5px;max-width:none;text-align:center}
 
-  /* row 2 + 3 live inside buy-right; let it wrap so the button drops below */
-  .buy-right{flex:1 1 100%;gap:10px 14px;margin-left:0;align-items:center;flex-wrap:wrap}
-  .stepper{gap:7px}
-  .stepper .cap{font-size:11px}
-  .stepper button{width:32px;height:32px}
-  /* total pinned to the right of the stepper row */
-  .total{margin-left:auto;text-align:right}
-  .total .cap{font-size:9.5px}
-  .total .v{font-size:21px}
-  /* buy button: own row, full width, primary */
-  .buy-right .btn-fill{flex:1 1 100%;padding:14px!important;font-size:15px!important;text-align:center}
+  /* buy-right is the whole compact stack of two short rows */
+  .buy-right{flex:1 1 100%;flex-direction:column;gap:8px;margin-left:0;align-items:stretch;flex-wrap:nowrap}
+
+  /* row 1 — two equal stepper pills, label LEFT and −/value/+ control RIGHT,
+     so each reads like a clean labelled counter (not a cramped stack) */
+  .stepper-row{display:flex;gap:8px}
+  .stepper{flex:1;min-width:0;align-items:center;justify-content:space-between;gap:8px;
+    background:rgba(252,248,238,.05);border:1px solid rgba(252,248,238,.12);
+    border-radius:12px;padding:8px 10px 8px 13px}
+  .stepper .cap{min-width:0;font-size:12px;color:#CFE0C7;font-weight:500;letter-spacing:.01em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .stepper .step-ctrl{flex:none;gap:8px}
+  .stepper button{width:30px;height:30px;flex:none;font-size:17px}
+  .stepper input.v{width:36px;min-width:0;font-size:16px}
+
+  /* row 2 — slim total line: label left, price right */
+  .buy-cta{display:flex;flex-direction:column;gap:8px}
+  .total{display:flex;align-items:baseline;justify-content:space-between;
+    text-align:left;padding:1px 2px 0}
+  .total .cap{font-size:10.5px}
+  .total .v{font-size:22px}
+
+  /* row 3 — Mua vé: full-width, bold, the primary action */
+  .buy-cta .btn-fill{width:100%;padding:15px!important;font-size:16px!important;
+    font-weight:700;text-align:center}
 }
 
 /* ============ DETAIL SHEET ============ */
@@ -940,9 +972,13 @@ svg{vertical-align:-0.15em}
 .j-counter{flex:none;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;line-height:1}
 .j-counter b{font-family:"Lora",serif;font-size:30px;font-weight:600;color:#FCF8EE}
 .j-counter span{font-size:12px;color:#8FB29C;letter-spacing:.06em;margin-top:3px}
-.j-strip{position:relative;flex:1;min-width:0;display:flex;gap:8px;overflow-x:auto;padding:14px 2px 4px;scrollbar-width:none}
+/* column holds the pinned progress line above the scrolling filmstrip, so the
+   line stays fixed across the full visible width on mobile and desktop while
+   only the frames below it scroll horizontally */
+.j-strip-col{position:relative;flex:1;min-width:0;display:flex;flex-direction:column}
+.j-strip{flex:1;min-width:0;display:flex;gap:8px;overflow-x:auto;padding:14px 2px 4px;scrollbar-width:none}
 .j-strip::-webkit-scrollbar{display:none}
-.j-strip-line{position:absolute;left:0;right:0;top:4px;height:2px;background:rgba(255,255,255,.12);border-radius:2px}
+.j-strip-line{position:absolute;left:0;right:0;top:4px;height:2px;background:rgba(255,255,255,.12);border-radius:2px;pointer-events:none}
 .j-strip-fill{display:block;height:100%;border-radius:2px;background:linear-gradient(90deg,var(--green),var(--lime));transition:width .45s ease}
 /* a frame = a little filmstrip cell, current one lit */
 .j-frame{flex:none;width:96px;display:flex;flex-direction:column;gap:6px;cursor:pointer;text-align:left;
@@ -1036,7 +1072,7 @@ svg{vertical-align:-0.15em}
   68%{transform:rotate(-6.5deg) scale(1.22)}
   100%{opacity:1;transform:rotate(-7deg) scale(1.12)}
 }
-/* the "Chưa gồm" stamp slams down: drops from above, oversized & faint, then
+/* the "CHƯA BAO GỒM" stamp slams down: drops from above, oversized & faint, then
    snaps to size with a tiny settle wobble — like a rubber stamp pressed on */
 @keyframes stampPress{
   0%{opacity:0;transform:translateY(-10px) rotate(2deg) scale(1.9)}
@@ -1053,8 +1089,8 @@ svg{vertical-align:-0.15em}
 /* corner stamps — sit half outside the card like the "GỢI Ý CHO BẠN" stamp */
 .j-seanote-stamp{position:absolute;top:-14px;right:16px;z-index:3;
   font-family:var(--mono);font-size:16px;font-weight:800;
-  letter-spacing:.12em;color:var(--orange);border:2.5px solid var(--orange);border-radius:8px;
-  padding:6px 13px;background:var(--card);transform:rotate(-7deg);transform-origin:center;
+  letter-spacing:.12em;color:red;border:2.5px solid red;border-radius:8px;
+  padding:6px 13px;background:#ffffff8b;transform:rotate(-7deg);transform-origin:center;
   animation:stampPress .5s cubic-bezier(.3,1.4,.5,1) .28s both}
 /* "Đã thêm" stamp: big, transparent fill, slammed onto the bottom-right corner
    of the ticket, bleeding past the edge — matches the combo card stamp */
