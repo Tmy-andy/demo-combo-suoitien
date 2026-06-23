@@ -479,18 +479,21 @@ svg{vertical-align:-0.15em}
 .tile .open{font-size:11px;font-weight:600;color:var(--green);letter-spacing:.04em}
 
 /* ---- journey ---- */
-.journey{background:#000;color:#F4EEDF;display:flex;flex-direction:column}
+.journey{background:#05130C;color:#F4EEDF;display:flex;flex-direction:column}
 .journey .kk{font-size:11px;letter-spacing:.1em;color:#9DBCA9;text-transform:uppercase}
 .j-top{position:relative;z-index:6;align-items:center;gap:12px;padding:12px clamp(14px,3vw,28px);
-  background:#000;border-bottom:1px solid rgba(255,255,255,.08)}
+  background:#05130C;border-bottom:1px solid rgba(255,255,255,.06)}
 .j-top .j-title{flex:1;text-align:center;min-width:0}
 .j-top .j-title .nm{font-size:17px;color:#FCF8EE;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .j-ghost{cursor:pointer;border:none;background:transparent;color:#CFE3D2;font-size:14px;font-weight:600}
-.j-tabs{position:relative;z-index:6;justify-content:center;gap:7px;padding:10px;background:#000}
+.j-tabs{position:relative;z-index:6;justify-content:center;gap:7px;padding:10px;background:#05130C}
 .j-tab{cursor:pointer;display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:8px 16px;font-size:13px;font-weight:600;
   background:rgba(255,255,255,.06);color:#CFE3D2;border:1.5px solid rgba(255,255,255,.16)}
 .j-tab.on{background:var(--lime);color:var(--forest-2);border-color:var(--lime)}
 .j-stage{position:relative;flex:1;min-height:340px;overflow:hidden}
+.j-stage::before,.j-stage::after{content:"";position:absolute;left:0;right:0;height:90px;z-index:1;pointer-events:none}
+.j-stage::before{top:0;background:linear-gradient(#05130C,rgba(5,19,12,0))}
+.j-stage::after{bottom:0;background:linear-gradient(rgba(5,19,12,0),#05130C)}
 
 .cine-title{position:absolute;left:50%;top:clamp(20px,5vh,56px);transform:translateX(-50%);text-align:center;z-index:2}
 .cine-title .big{font-size:clamp(24px,4vw,40px);color:#fff;text-shadow:0 2px 20px rgba(0,0,0,.45);margin-top:5px}
@@ -547,7 +550,7 @@ svg{vertical-align:-0.15em}
   border:1px solid rgba(255,255,255,.25);background:rgba(8,48,28,.6);backdrop-filter:blur(8px);color:#F4EEDF;font-size:20px;cursor:pointer;z-index:7}
 
 .j-timeline{position:relative;z-index:6;flex-direction:column;gap:10px;padding:14px clamp(14px,3vw,28px) 18px;
-  background:#000;border-top:1px solid rgba(255,255,255,.08)}
+  background:#05130C;border-top:1px solid rgba(255,255,255,.06)}
 .tl-bar{display:flex;align-items:center;gap:10px}
 .tl-track{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.12);overflow:hidden}
 .tl-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--lime));transition:width .4s}
