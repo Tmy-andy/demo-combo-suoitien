@@ -120,22 +120,30 @@ function viewRec(){
   if(el){ const y=el.getBoundingClientRect().top+window.scrollY-90; window.scrollTo({top:y,behavior:'smooth'}); }
   selectCombo(id);
 }
-function toggleSea(id){ const seaBy={...state.seaBy}; seaBy[id]=!seaBy[id]; setState({seaBy}); }
+/* id of the combo whose sea add-on was JUST turned on — only this card replays
+   the "ĐÃ THÊM" stamp animation; other already-added cards stay put on re-render */
+let seaJustAdded=null;
+function toggleSea(id){ const seaBy={...state.seaBy}; const on=!seaBy[id]; seaBy[id]=on;
+  seaJustAdded=on?id:null; setState({seaBy}); seaJustAdded=null; }
 /* commit the sea add-on (no toast — the up-sell card animates its own
    confirmation) */
-function commitSea(id){ const seaBy={...state.seaBy}; seaBy[id]=true; setState({seaBy}); }
+function commitSea(id){ const seaBy={...state.seaBy}; seaBy[id]=true;
+  seaJustAdded=id; setState({seaBy}); seaJustAdded=null; }
 
 /* Journey: play a little "ticket torn off & accepted" animation on the up-sell
    card — stamp flips to "Đã thêm", the card tears and fades — then drop it. The
    state flip + journey remount happen only after the animation, so nothing
    flashes mid-tear. */
 function seaAddJourney(id){
+  // commit the add-on to state immediately so the combo card / buy bar tick
+  // even if the user closes VR before the tear animation finishes
+  commitSea(id);
   const wrap=document.querySelector('.j-seanote-wrap');
-  if(!wrap || reducedMotion()){ commitSea(id); if(state.journey) mountJourney(); return; }
+  if(!wrap || reducedMotion()){ if(state.journey) mountJourney(); return; }
   wrap.classList.add('confirming');
   wrap.addEventListener('animationend',e=>{
     if(e.animationName!=='seanoteTear') return;
-    commitSea(id); if(state.journey) mountJourney();   // remount rebuilds without the note
+    if(state.journey) mountJourney();   // remount rebuilds without the note
   },{once:true});
 }
 function seaAddExplore(id){ commitSea(id); toast('Đã thêm vé Biển Tiên Đồng vào '+comboOf(id).name); }
@@ -337,8 +345,11 @@ document.addEventListener('click', e=>{
   }
 });
 document.addEventListener('keydown', e=>{
+  if(e.key!=='Enter'&&e.key!==' ') return;
+  const sea=e.target.closest('.addon[data-act="sea"]');
+  if(sea){ e.preventDefault(); e.stopPropagation(); toggleSea(sea.dataset.id); return; }
   const t=e.target.closest('[data-key]'); if(!t) return;
-  if(e.key==='Enter'||e.key===' '){ e.preventDefault(); selectCombo(t.dataset.id); }
+  e.preventDefault(); selectCombo(t.dataset.id);
 });
 
 /* ============================================================
@@ -471,11 +482,33 @@ function viewCombo(c){
         <span class="chip-meta mono">${total} điểm · VR 360°</span>
       </div>
       <div class="hl-list">${hl}</div>
+
       <div class="strip">
-        <label class="addon-inline ${sea?'on':''}" data-act="sea" data-id="${c.id}">
-          <span class="toggle"><span class="knob"></span></span>Thêm Biển Tiên Đồng
-        </label>
         <button class="morelink" data-act="sheet" data-id="${c.id}">+${total-4} điểm · Chi tiết ${lucide('arrow-right','currentColor',13)}</button>
+      </div>
+
+      <!-- UP-SELL · Biển Tiên Đồng — a vintage "admit one" coupon stub -->
+      <div class="addon ${sea?'on':''} ${sea&&c.id===seaJustAdded?'fresh':''}" data-act="sea" data-id="${c.id}" role="button" tabindex="0"
+           aria-pressed="${sea?'true':'false'}">
+        <span class="addon-inner">
+          <span class="addon-corner tl">❖</span><span class="addon-corner tr">❖</span>
+          <span class="addon-corner bl">❖</span><span class="addon-corner br">❖</span>
+
+          <span class="addon-side left mono">Vé bổ sung</span>
+
+          <span class="addon-core">
+            <span class="addon-flour top">✦ ✦ ✦</span>
+            <span class="addon-nm serif">Biển Tiên Đồng</span>
+            <span class="addon-rule"><i></i><span class="mono">Công viên nước</span><i></i></span>
+            <span class="addon-flour bot">+${SEA_DEST.length} điểm · +${fmt(c.seaAdult-c.priceAdult)}</span>
+            <span class="addon-btn mono">
+              <span class="addon-btn-add">＋ Thêm vào vé</span>
+              <span class="addon-btn-on">${lucide('check','currentColor',13)} Đã thêm vào vé</span>
+            </span>
+          </span>
+
+          <span class="addon-side right mono">Admit one</span>
+        </span>
       </div>
     </div>
 

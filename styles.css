@@ -325,13 +325,93 @@ svg{vertical-align:-0.15em}
 .hl-ty{display:block;font-size:11px;color:var(--muted);font-family:var(--mono);margin-left:auto;white-space:nowrap}
 .hl-item>span:nth-child(2){flex:1;display:flex;align-items:center;gap:10px;min-width:0}
 .strip{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.addon-inline{display:inline-flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;font-weight:500;color:var(--ink)}
 .morelink{background:none;border:none;cursor:pointer;font-size:13.5px;font-weight:600;color:var(--accent);margin-left:auto}
 .morelink:hover{text-decoration:underline}
-.toggle{position:relative;width:40px;height:23px;border-radius:999px;background:#C7D2CA;flex:none;transition:.2s}
-.toggle .knob{position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
-.addon-inline.on .toggle{background:var(--accent)}
-.addon-inline.on .toggle .knob{transform:translateX(17px)}
+
+/* ===== UP-SELL · Biển Tiên Đồng — an optional line printed on the ticket ===== */
+/* Reads as part of the paper ticket: dashed rule above, mono labels, the combo's
+   own accent. Unchecked = a dotted "tick to add" box; checked = stamped accent. */
+/* ===== UP-SELL · Biển Tiên Đồng — a vintage "admit one" coupon ===== */
+/* Warm cream stock, double rule, ornamental corners, serif title, vertical
+   side captions — styled after an old railway-ticket stub. The combo's accent
+   is the ink colour so each card keeps its own hue. */
+.addon{position:relative;display:block;cursor:pointer;
+  margin:18px 0 6px;padding:7px;border-radius:8px;
+  background:linear-gradient(180deg,#FBF7EC,#F6EFDD);
+  /* OUTER rule — bold, the dominant frame */
+  border:2.5px solid color-mix(in srgb,var(--accent) 78%,#7A6233);
+  box-shadow:0 1px 0 rgba(255,255,255,.7) inset;
+  -webkit-tap-highlight-color:transparent;transition:box-shadow .2s,transform .15s}
+.addon:hover{transform:translateY(-1px);
+  box-shadow:0 8px 20px -12px color-mix(in srgb,var(--accent) 75%,transparent),0 1px 0 rgba(255,255,255,.7) inset}
+.addon:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+/* INNER rule — thin hairline set in from the bold outer frame */
+.addon-inner{position:relative;display:flex;align-items:stretch;
+  border:1px solid color-mix(in srgb,var(--accent) 50%,#C9B68E);border-radius:4px;
+  padding:11px 9px}
+
+/* ornamental diamond corners */
+.addon-corner{position:absolute;font-size:9px;line-height:1;color:var(--accent);opacity:.7}
+.addon-corner.tl{top:3px;left:5px}.addon-corner.tr{top:3px;right:5px}
+.addon-corner.bl{bottom:3px;left:5px}.addon-corner.br{bottom:3px;right:5px}
+
+/* vertical side captions */
+.addon-side{flex:none;writing-mode:vertical-rl;text-orientation:mixed;
+  display:flex;align-items:center;justify-content:center;
+  font-size:8.5px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;
+  color:color-mix(in srgb,var(--accent) 70%,#7A6A45);padding:0 3px}
+.addon-side.left{transform:rotate(180deg)}
+.addon-side::before,.addon-side::after{content:"";display:block;height:8px;width:1px;
+  background:currentColor;opacity:.5;margin:5px 0}
+
+/* centre column */
+.addon-core{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:5px;
+  padding:2px 6px;text-align:center}
+.addon-flour{font-size:10px;letter-spacing:.18em;color:color-mix(in srgb,var(--accent) 60%,#9A8758)}
+.addon-flour.top{margin-top:1px}
+.addon-flour.bot{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.02em;
+  color:color-mix(in srgb,var(--accent) 75%,#6A5A38)}
+.addon-nm{font-size:22px;font-weight:700;line-height:1;letter-spacing:.01em;
+  color:var(--accent);text-shadow:0 1px 0 rgba(255,255,255,.5)}
+/* "London —◆— Paris" style flourished rule under the title */
+.addon-rule{display:flex;align-items:center;gap:9px;width:100%;max-width:230px}
+.addon-rule i{flex:1;height:0;border-top:1px solid color-mix(in srgb,var(--accent) 45%,#C9B68E)}
+.addon-rule span{font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:color-mix(in srgb,var(--accent) 70%,#7A6A45)}
+
+.addon-btn{margin-top:3px;display:inline-flex;align-items:center;gap:6px;
+  padding:7px 20px;border-radius:3px;font-size:11.5px;font-weight:800;
+  letter-spacing:.08em;text-transform:uppercase;color:#FBF7EC;background:var(--accent);
+  box-shadow:0 2px 0 color-mix(in srgb,var(--accent) 60%,#000);transition:.15s}
+.addon:hover .addon-btn{transform:translateY(-1px);box-shadow:0 3px 0 color-mix(in srgb,var(--accent) 60%,#000)}
+.addon-btn-add{display:inline-flex;align-items:center;gap:6px}
+.addon-btn-on{display:none;align-items:center;gap:6px}
+
+/* ON: the coupon is "validated" — punched look, button flips to ✓ */
+.addon.on{background:linear-gradient(180deg,#F3ECD8,#ECE2C8)}
+.addon.on .addon-btn{background:color-mix(in srgb,var(--accent) 88%,#000);box-shadow:none}
+.addon.on .addon-btn-add{display:none}
+.addon.on .addon-btn-on{display:inline-flex}
+/* validation stamp slammed onto the bottom-right corner, bleeding past the edge */
+.addon.on{--stamp:#D33A2C}
+.addon.on .addon-inner::after{content:"ĐÃ THÊM";position:absolute;bottom:-14px;right:-6px;z-index:5;
+  pointer-events:none;white-space:nowrap;
+  font-family:var(--mono);font-size:26px;font-weight:800;letter-spacing:.12em;
+  color:var(--stamp);opacity:.62;
+  border:3px solid var(--stamp);border-radius:9px;padding:5px 14px;
+  transform:rotate(-9deg);transform-origin:center}
+/* only the just-added card replays the slam-down stamp */
+.addon.on.fresh .addon-inner::after{animation:addonStamp .5s cubic-bezier(.3,1.4,.5,1) both}
+@keyframes addonStamp{
+  0%{opacity:0;transform:rotate(2deg) scale(2.2)}
+  55%{opacity:.92;transform:rotate(-11deg) scale(.92)}
+  72%{transform:rotate(-7.5deg) scale(1.06)}
+  100%{opacity:.92;transform:rotate(-9deg) scale(1)}
+}
+@media(prefers-reduced-motion:reduce){
+  .addon.on.fresh .addon-inner::after{animation:none}
+}
 .tk-foot .pair{display:flex;gap:11px}
 .tk-foot .pair .btn{flex:1;padding:11px 8px;font-size:13px}
 .tk-foot .cta{padding:14px;font-size:15px}
@@ -344,7 +424,11 @@ svg{vertical-align:-0.15em}
 .combo.sel .tear-stub{transform:translateY(-9px) rotate(-3.5deg);z-index:4;pointer-events:none;
   filter:drop-shadow(0 10px 13px rgba(12,40,24,.22))}
 
-@media(max-width:560px){ .hl-ty{display:none} }
+@media(max-width:560px){
+  .hl-ty{display:none}
+  .addon-side{font-size:8px;letter-spacing:.16em}
+  .addon-nm{font-size:20px}
+}
 
 /* ============ BUY BAR ============ */
 .buybar{position:fixed;left:0;right:0;bottom:0;z-index:60;background:var(--ink);color:#FCF8EE;border-top:2px dashed rgba(252,248,238,.28)}
