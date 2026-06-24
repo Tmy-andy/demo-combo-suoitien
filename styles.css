@@ -492,16 +492,14 @@ svg{vertical-align:-0.15em}
   .stepper button{width:30px;height:30px;flex:none;font-size:17px}
   .stepper input.v{width:36px;min-width:0;font-size:16px}
 
-  /* row 2 — slim total line: label left, price right */
-  .buy-cta{display:flex;flex-direction:column;gap:8px}
-  .total{display:flex;align-items:baseline;justify-content:space-between;
-    text-align:left;padding:1px 2px 0}
-  .total .cap{font-size:10.5px}
-  .total .v{font-size:22px}
+  /* row 2 — price + button in one line */
+  .buy-cta{display:flex;align-items:center;gap:10px;justify-content:space-between}
+  .total{display:flex;flex-direction:column;gap:1px;min-width:0}
+  .total .cap{display:none}
+  .total .v{font-size:21px;white-space:nowrap}
 
-  /* row 3 — Mua vé: full-width, bold, the primary action */
-  .buy-cta .btn-fill{width:100%;padding:15px!important;font-size:16px!important;
-    font-weight:700;text-align:center}
+  .buy-cta .btn-fill{flex:0 0 auto;padding:13px 18px!important;font-size:15px!important;
+    font-weight:700;text-align:center;white-space:nowrap}
 }
 
 /* ============ DETAIL SHEET ============ */
