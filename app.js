@@ -13,7 +13,9 @@ const state = {
   selectedId:null, seaBy:{},
   adults:2, children:0,
   sheetId:null, toast:null,
-  exploreId:null, vr:null, journey:null
+  exploreId:null, exploreTab:'places', exploreCollapsed:false, exploreZoom:1,
+  exploreFrom:null, exploreTo:null,
+  vr:null, journey:null
 };
 let toastTimer=null, jTimer=null;
 
@@ -59,11 +61,17 @@ const LUCIDE = {
   x:"<path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/>",
   plus:"<path d=\"M5 12h14\"/><path d=\"M12 5v14\"/>",
   minus:"<path d=\"M5 12h14\"/>",
+  "arrow-up":"<path d=\"m5 12 7-7 7 7\"/><path d=\"M12 19V5\"/>",
   "arrow-down":"<path d=\"M12 5v14\"/><path d=\"m19 12-7 7-7-7\"/>",
+  "arrow-up-left":"<path d=\"M7 17V7h10\"/><path d=\"M17 17 7 7\"/>",
+  "arrow-up-right":"<path d=\"M7 7h10v10\"/><path d=\"M7 17 17 7\"/>",
+  "rotate":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/>",
+  "flag":"<path d=\"M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z\"/><path d=\"M4 22v-7\"/>",
   "arrow-right":"<path d=\"M5 12h14\"/><path d=\"m12 5 7 7-7 7\"/>",
   "arrow-left":"<path d=\"m12 19-7-7 7-7\"/><path d=\"M19 12H5\"/>",
   "chevron-left":"<path d=\"m15 18-6-6 6-6\"/>",
   "chevron-right":"<path d=\"m9 18 6-6-6-6\"/>",
+  "chevron-down":"<path d=\"m6 9 6 6 6-6\"/>",
   pause:"<rect x=\"14\" y=\"3\" width=\"5\" height=\"18\" rx=\"1\"/><rect x=\"5\" y=\"3\" width=\"5\" height=\"18\" rx=\"1\"/>",
   maximize:"<path d=\"M8 3H5a2 2 0 0 0-2 2v3\"/><path d=\"M21 8V5a2 2 0 0 0-2-2h-3\"/><path d=\"M3 16v3a2 2 0 0 0 2 2h3\"/><path d=\"M16 21h3a2 2 0 0 0 2-2v-3\"/>",
   ticket:"<path d=\"M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z\"/><path d=\"M13 5v2\"/><path d=\"M13 17v2\"/><path d=\"M13 11v2\"/>"
@@ -192,8 +200,86 @@ function buy(){
 const playlist = j => { const c=comboOf(j.comboId); return c.dest.concat(SEA_DEST); };
 function openPano(id){ setState({vr:{id}}); }
 function closeVR(){ setState({vr:null}); }
-function openExplore(id){ setState({exploreId:id||state.selectedId||state.recId||COMBOS[0].id}); }
+function openExplore(id){ const cid=id||state.selectedId||state.recId||COMBOS[0].id; const c=comboOf(cid);
+  setState({exploreId:cid,exploreTab:'places',exploreZoom:1,exploreCollapsed:false,
+    exploreFrom:c.dest[0], exploreTo:c.dest[c.dest.length-1]}); }
 function closeExplore(){ setState({exploreId:null}); }
+function expTab(t){ if(state.exploreTab!==t) setState({exploreTab:t}); }
+function expCollapse(){ setState({exploreCollapsed:!state.exploreCollapsed}); }
+function expZoom(d){ const z=Math.min(2.5,Math.max(1,+(state.exploreZoom+d).toFixed(2))); if(z!==state.exploreZoom) setState({exploreZoom:z}); }
+function expZoomReset(){ if(state.exploreZoom!==1) setState({exploreZoom:1}); }
+function expSetFrom(id){ if(id!==state.exploreFrom) setState({exploreFrom:id}); }
+function expSetTo(id){ if(id!==state.exploreTo) setState({exploreTo:id}); }
+function expSwap(){ setState({exploreFrom:state.exploreTo,exploreTo:state.exploreFrom}); }
+function expMyLoc(){ const c=comboOf(state.exploreId); setState({exploreFrom:c.dest[0],exploreTab:'route'}); toast('Đã đặt điểm bắt đầu tại cổng vào'); }
+
+/* ===================== WAYFINDING ENGINE =====================
+   Reproduces the "Chỉ đường" logic from suoitien.trip360.vn: pick a FROM and
+   a TO, then compute the shortest walking route across the park's points and
+   surface total distance, walking time, a drawn route line, and turn-by-turn
+   steps. There is no real path network in the data, so we synthesise one:
+   each point links to its nearest neighbours (a proximity graph), then we run
+   Dijkstra over that graph — routes hop along intermediate spots instead of
+   cutting straight lines, the way a real wayfinder threads the walkways. */
+const PARK_W=1200, PARK_H=820;          // park footprint in metres (for scaling)
+const WALK_MPM=75;                       // average walking pace, metres / minute
+/* metric position of a point, in metres */
+const ptM=id=>({x:DEST[id].mx/100*PARK_W, y:DEST[id].my/100*PARK_H});
+const distM=(a,b)=>{ const p=ptM(a),q=ptM(b); return Math.hypot(p.x-q.x,p.y-q.y); };
+/* undirected proximity graph: every node to its K nearest, made symmetric */
+function buildGraph(ids,K=4){
+  const adj={}; ids.forEach(id=>adj[id]=new Set());
+  ids.forEach(a=>{
+    ids.filter(b=>b!==a).sort((x,y)=>distM(a,x)-distM(a,y)).slice(0,K)
+       .forEach(b=>{ adj[a].add(b); adj[b].add(a); });
+  });
+  return adj;
+}
+/* Dijkstra shortest path over the graph; falls back to a direct hop */
+function routeBetween(ids,from,to){
+  if(!from||!to||from===to||!ids.includes(from)||!ids.includes(to)) return null;
+  const adj=buildGraph(ids);
+  const dist={}, prev={}, seen={}; ids.forEach(id=>dist[id]=Infinity);
+  dist[from]=0;
+  while(true){
+    let u=null,best=Infinity;
+    for(const id of ids) if(!seen[id]&&dist[id]<best){ best=dist[id]; u=id; }
+    if(u===null) break;
+    if(u===to) break;
+    seen[u]=true;
+    adj[u].forEach(v=>{ const nd=dist[u]+distM(u,v); if(nd<dist[v]){ dist[v]=nd; prev[v]=u; } });
+  }
+  let path=[]; if(dist[to]<Infinity){ let cur=to; while(cur!==undefined){ path.unshift(cur); cur=prev[cur]; } }
+  if(path.length<2) path=[from,to];                      // graph disconnected → straight line
+  const meters=Math.round(path.reduce((s,id,i)=>i?s+distM(path[i-1],id):0,0));
+  const minutes=Math.max(1,Math.round(meters/WALK_MPM));
+  return {path,meters,minutes,steps:routeSteps(path)};
+}
+/* turn classification at node b, arriving from a and leaving to c */
+function turnAt(a,b,c){
+  const p=ptM(a),q=ptM(b),r=ptM(c);
+  const v1={x:q.x-p.x,y:q.y-p.y}, v2={x:r.x-q.x,y:r.y-q.y};
+  const m1=Math.hypot(v1.x,v1.y), m2=Math.hypot(v2.x,v2.y); if(!m1||!m2) return 'straight';
+  const cos=(v1.x*v2.x+v1.y*v2.y)/(m1*m2);
+  const ang=Math.acos(Math.max(-1,Math.min(1,cos)))*180/Math.PI;
+  if(ang<22) return 'straight';
+  if(ang>150) return 'back';
+  const cross=v1.x*v2.y-v1.y*v2.x;                       // screen coords: y grows downward
+  return cross>0 ? 'right' : 'left';
+}
+const TURN={start:{ic:'navigation',lab:'Xuất phát'},straight:{ic:'arrow-up',lab:'Đi thẳng'},
+  left:{ic:'arrow-up-left',lab:'Rẽ trái'},right:{ic:'arrow-up-right',lab:'Rẽ phải'},
+  back:{ic:'rotate',lab:'Quay đầu'},end:{ic:'flag',lab:'Đến nơi'}};
+/* build a turn-by-turn step list from an ordered path of point ids */
+function routeSteps(path){
+  const steps=[{kind:'start', id:path[0], meters:0}];
+  for(let j=1;j<path.length;j++){
+    const last=j===path.length-1;
+    const kind=last?'end':(j===1?'straight':turnAt(path[j-2],path[j-1],path[j]));
+    steps.push({kind, id:path[j], meters:Math.round(distM(path[j-1],path[j]))});
+  }
+  return steps;
+}
 
 /* Journey lives in its own host (#journeyHost) and is mounted ONCE per open,
    then patched in place. This is what stops the whole VR screen — scene,
@@ -332,6 +418,13 @@ document.addEventListener('click', e=>{
     case 'sheetStop': e.stopPropagation(); break;
     case 'journey': e.stopPropagation(); openJourney(id); break;
     case 'explore': e.stopPropagation(); openExplore(id); break;
+    case 'expTab': expTab(t.dataset.tab); break;
+    case 'expCollapse': expCollapse(); break;
+    case 'expZoomIn': expZoom(0.3); break;
+    case 'expZoomOut': expZoom(-0.3); break;
+    case 'expZoomReset': expZoomReset(); break;
+    case 'expSwap': expSwap(); break;
+    case 'expMyLoc': expMyLoc(); break;
     case 'portal': e.stopPropagation(); openPano(id); break;
     case 'closeVR': closeVR(); break;
     case 'closeExplore': closeExplore(); break;
@@ -355,6 +448,26 @@ document.addEventListener('click', e=>{
     case 'childSub': if(!comboOf(state.selectedId||'')?.childLocked) qty('child',-1); break;
     case 'buy': buy(); break;
   }
+});
+/* select changes (wayfinding From / To pickers) */
+document.addEventListener('change', e=>{
+  const t=e.target.closest('[data-act]'); if(!t) return;
+  if(t.dataset.act==='expSetFrom') expSetFrom(t.value);
+  else if(t.dataset.act==='expSetTo') expSetTo(t.value);
+});
+/* hovering a place row lights up + pops its pin on the map (and vice-versa) */
+function expHL(id,on){
+  if(!id) return;
+  const pin=document.querySelector('.mappin[data-id="'+(window.CSS&&CSS.escape?CSS.escape(id):id)+'"]');
+  if(pin) pin.classList.toggle('hl',on);
+}
+document.addEventListener('mouseover', e=>{
+  const row=e.target.closest('.exp-row'); if(row) expHL(row.dataset.id,true);
+});
+document.addEventListener('mouseout', e=>{
+  const row=e.target.closest('.exp-row'); if(!row) return;
+  if(e.relatedTarget && row.contains(e.relatedTarget)) return;  // still inside the row
+  expHL(row.dataset.id,false);
 });
 document.addEventListener('keydown', e=>{
   if(e.key!=='Enter'&&e.key!==' ') return;
@@ -742,71 +855,184 @@ function viewExplore(){
   if(!state.exploreId) return '';
   const c=comboOf(state.exploreId); const sea=!!state.seaBy[c.id];
   const ids=c.dest.concat(SEA_DEST);  // always preview the full park, sea included
+  const tab=state.exploreTab||'places';
+  const z=state.exploreZoom||1;
+  const collapsed=!!state.exploreCollapsed;
 
-  const pins=ids.map(id=>{
+  // wayfinding route (only when the Directions tab is active)
+  const routing=tab==='route';
+  const route=routing?routeBetween(ids,state.exploreFrom,state.exploreTo):null;
+  const onPath=new Set(route?route.path:[]);
+  const fromId=route?route.path[0]:null, toId=route?route.path[route.path.length-1]:null;
+
+  // map pins — numbered like a real wayfinding board, sea spots tinted teal.
+  // While routing, the from/to pins light up and off-route pins dim back.
+  const pins=ids.map((id,i)=>{
     const d=DEST[id];
-    return `<button class="mappin ${d.sea?'sea':''}" data-act="portal" data-id="${id}" title="${esc(d.name)}" style="left:${d.mx}%;top:${d.my}%">
-      <span class="head">${svgIcon(d.icon,'#fff',15)}</span>
+    let mark='';
+    if(route){
+      if(id===fromId) mark=' is-from'; else if(id===toId) mark=' is-to';
+      else if(onPath.has(id)) mark=' is-via'; else mark=' is-dim';
+    }
+    return `<button class="mappin ${d.sea?'sea':''}${mark}" data-act="portal" data-id="${id}" title="${esc(d.name)}" style="left:${d.mx}%;top:${d.my}%">
+      <span class="head"><i>${i+1}</i></span>
       <span class="lab">${esc(d.name)}</span>
     </button>`;
   }).join('');
 
-  const tiles=ids.map(id=>{
+  // route line drawn over the map, aligned to pin coordinates (mx%, my%)
+  const routeLine=route?`<svg class="route-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <polyline points="${route.path.map(id=>DEST[id].mx+','+DEST[id].my).join(' ')}"
+        fill="none" stroke-width="1.1" stroke-linecap="round"
+        stroke-linejoin="round" stroke-dasharray="2.4 2"/>
+    </svg>`:'';
+
+  // PLACES tab — scrollable destination list, each row opens a 360° portal
+  const rows=ids.map((id,i)=>{
     const d=DEST[id];
-    return `<button class="tile ${d.sea?'sea':''}" data-act="portal" data-id="${id}">
-      ${d.sea?`<span class="sea-flag mono">Biển Tiên Đồng</span>`:''}
-      <span class="ic">${svgIcon(d.icon,d.sea?'#0E7E85':'#0A7C3E',19)}</span>
-      <span><span class="nm">${esc(d.name)}</span><span class="ty">${esc(d.type)}</span></span>
-      <span class="open mono">Mở 360° ${lucide('arrow-right','currentColor',13)}</span>
+    return `<button class="exp-row ${d.sea?'sea':''}" data-act="portal" data-id="${id}">
+      <span class="exp-row-no mono">${i+1}</span>
+      <span class="exp-row-ic">${svgIcon(d.icon,d.sea?'#0E7E85':'#0A7C3E',18)}</span>
+      <span class="exp-row-txt">
+        <span class="exp-row-nm">${esc(d.name)}${d.sea?'<span class="exp-row-tag mono">BIỂN</span>':''}</span>
+        <span class="exp-row-ty">${esc(d.type)}</span>
+      </span>
+      <span class="exp-row-go mono">360° ${lucide('arrow-right','currentColor',13)}</span>
     </button>`;
   }).join('');
 
-  return `<div class="screen explore">
-    <div class="exp-head">
-      <div style="flex:1">
-        <div class="overline" style="color:var(--green)">Khám phá tự do · ${esc(c.group)}</div>
-        <h2 class="serif" style="font-size:clamp(20px,2.6vw,26px);color:var(--green-d);margin-top:4px">Bản đồ cõi tiên — chạm điểm bất kỳ để mở 360°</h2>
+  // sea up-sell — the same vintage "admit one" coupon used on the home tickets
+  const seaCoupon=`<div class="addon exp-addon" data-act="seaAddExplore" data-id="${c.id}" role="button" tabindex="0" style="--accent:${c.accent}">
+      <span class="addon-inner">
+        <span class="addon-corner tl">❖</span><span class="addon-corner tr">❖</span>
+        <span class="addon-corner bl">❖</span><span class="addon-corner br">❖</span>
+        <span class="addon-side left mono">Vé bổ sung</span>
+        <span class="addon-core">
+          <span class="addon-flour top">✦ ✦ ✦</span>
+          <span class="addon-nm serif">Biển Tiên Đồng</span>
+          <span class="addon-rule"><i></i><span class="mono">Công viên nước</span><i></i></span>
+          <span class="addon-flour bot">+${SEA_DEST.length} điểm · +${fmt(c.seaAdult-c.priceAdult)}</span>
+          <span class="addon-btn mono">
+            <span class="addon-btn-add">＋ Thêm vào vé</span>
+            <span class="addon-btn-on">${lucide('check','currentColor',13)} Đã thêm vào vé</span>
+          </span>
+        </span>
+        <span class="addon-side right mono">Admit one</span>
+      </span>
+    </div>`;
+
+  const placesPanel=`
+    <p class="exp-hint">${lucide('navigation','var(--green)',13)} Chạm một điểm trên bản đồ hoặc trong danh sách để mở ảnh 360°.</p>
+    ${sea?'':seaCoupon}
+    <div class="exp-list">${rows}</div>`;
+
+  // ROUTE tab — a working "Chỉ đường" panel: From/To pickers compute a shortest
+  // walking route across the park (distance, time, turn-by-turn steps).
+  const opt=(sel)=>ids.map(id=>`<option value="${id}" ${id===sel?'selected':''}>${esc(DEST[id].name)}</option>`).join('');
+  const sameEnds=state.exploreFrom===state.exploreTo;
+  const steps=route?route.steps.map((s,i)=>{
+    const t=TURN[s.kind]||TURN.straight, d=DEST[s.id];
+    return `<div class="exp-step ${s.kind}">
+      <span class="exp-step-ic">${lucide(t.ic,'currentColor',15)}</span>
+      <span class="exp-step-txt">
+        <span class="exp-step-lab">${t.lab}${s.kind==='start'||s.kind==='end'?'':' · đi tới'}</span>
+        <span class="exp-step-nm">${esc(d.name)}</span>
+      </span>
+      ${s.meters?`<span class="exp-step-m mono">${s.meters} m</span>`:''}
+    </div>`;
+  }).join('') : '';
+
+  const routePanel=`
+    <div class="exp-route-card">
+      <div class="exp-rail"><span class="exp-rail-dot"></span><span class="exp-rail-line"></span><span class="exp-rail-sq"></span></div>
+      <div class="exp-fields">
+        <label class="exp-field">
+          <span class="overline">ĐIỂM BẮT ĐẦU · FROM</span>
+          <span class="exp-select">${lucide('chevron-down','currentColor',15)}
+            <select data-act="expSetFrom">${opt(state.exploreFrom)}</select>
+          </span>
+        </label>
+        <label class="exp-field">
+          <span class="overline">ĐIỂM ĐẾN · TO</span>
+          <span class="exp-select">${lucide('chevron-down','currentColor',15)}
+            <select data-act="expSetTo">${opt(state.exploreTo)}</select>
+          </span>
+        </label>
       </div>
-      <button class="btn btn-ghost" data-act="closeExplore">${lucide('chevron-left','currentColor',16)} Quay lại</button>
+      <button class="exp-swap" data-act="expSwap" title="Đổi chiều">${lucide('rotate','currentColor',15)}</button>
     </div>
-    <div class="exp-wrap">
+    <div class="exp-route-actions">
+      <button class="exp-myloc" data-act="expMyLoc">${lucide('navigation','currentColor',14)} Vị trí của tôi</button>
+      <button class="exp-go360" data-act="journey" data-id="${c.id}">${lucide('play','currentColor',14,'currentColor')} Đi 360°</button>
+    </div>
+    ${route?`
+      <div class="exp-summary">
+        <div class="exp-sum-item"><span class="exp-sum-n">${route.meters.toLocaleString('vi-VN')}</span><span class="exp-sum-u">mét</span></div>
+        <div class="exp-sum-div"></div>
+        <div class="exp-sum-item"><span class="exp-sum-n">${route.minutes}</span><span class="exp-sum-u">phút đi bộ</span></div>
+        <div class="exp-sum-div"></div>
+        <div class="exp-sum-item"><span class="exp-sum-n">${route.path.length}</span><span class="exp-sum-u">chặng</span></div>
+      </div>
+      <div class="exp-steps-title overline">${lucide('navigation','var(--green)',13)} Chỉ đường từng bước</div>
+      <div class="exp-steps">${steps}</div>`
+    : `<p class="exp-hint">${sameEnds?'Chọn điểm đến khác với điểm bắt đầu để xem lộ trình.':'Chọn điểm bắt đầu và điểm đến để xem lộ trình.'}</p>`}`;
+
+  return `<div class="screen explore ${collapsed?'is-collapsed':''}">
+    <aside class="exp-side">
+      <div class="exp-brand">
+        <div class="exp-logo">ST</div>
+        <div class="exp-brand-txt">
+          <div class="exp-brand-name serif">Bản đồ Suối Tiên</div>
+          <div class="exp-brand-sub mono">KHÁM PHÁ 360° · ${esc(c.group)}</div>
+        </div>
+        <button class="exp-collapse" data-act="expCollapse" title="Thu gọn bảng">${lucide('chevron-left','currentColor',18)}</button>
+      </div>
+      <div class="exp-tabs">
+        <button class="exp-tab ${tab==='places'?'on':''}" data-act="expTab" data-tab="places">
+          ${lucide('pin','currentColor',16)}<span>Địa điểm<small>Places</small></span>
+        </button>
+        <button class="exp-tab ${tab==='route'?'on':''}" data-act="expTab" data-tab="route">
+          ${lucide('navigation','currentColor',16)}<span>Lộ trình<small>Directions</small></span>
+        </button>
+      </div>
+      <div class="exp-body">
+        ${tab==='route'?routePanel:placesPanel}
+      </div>
+      <div class="exp-foot">
+        <span class="mono">${ids.length} điểm · ${esc(c.name)}</span>
+      </div>
+    </aside>
+
+    <main class="exp-map">
+      <button class="exp-close" data-act="closeExplore" title="Đóng">${lucide('x','currentColor',20)}</button>
+      <button class="exp-reopen" data-act="expCollapse" title="Mở bảng">${lucide('chevron-right','currentColor',18)}<span>Bảng điều khiển</span></button>
       <div class="mapbox">
-        <svg viewBox="0 0 100 68" preserveAspectRatio="none" class="mapsvg">
-          <ellipse cx="22" cy="26" rx="24" ry="18" fill="#0A7C3E" opacity="0.08"></ellipse>
-          <ellipse cx="80" cy="42" rx="20" ry="20" fill="#E2571E" opacity="0.09"></ellipse>
-          <ellipse cx="55" cy="60" rx="30" ry="13" fill="#0E8F6E" opacity="0.16"></ellipse>
-          <ellipse cx="50" cy="44" rx="13" ry="7.5" fill="#3FB6BE" opacity="0.32"></ellipse>
-          <path d="M13 18 Q 22 30 33 30 T 52 33 Q 70 34 73 44 T 56 60" fill="none" stroke="#6FA52C" stroke-width="0.7" stroke-dasharray="2.2 2.2"></path>
-          <text x="14" y="9" font-size="2.5" fill="#0A7C3E" font-family="DM Mono,monospace" opacity="0.7" letter-spacing="0.3">KHU TÂM LINH · VĂN HOÁ</text>
-          <text x="70" y="16" font-size="2.5" fill="#E2571E" font-family="DM Mono,monospace" opacity="0.75" letter-spacing="0.3">KHU TRÒ CHƠI</text>
-          <text x="40" y="66" font-size="2.5" fill="#0E7E85" font-family="DM Mono,monospace" opacity="0.85" letter-spacing="0.3">BIỂN TIÊN ĐỒNG</text>
-        </svg>
-        ${pins}
+        <div class="map-inner" style="--z:${z}">
+          <svg viewBox="0 0 100 68" preserveAspectRatio="none" class="mapsvg">
+            <ellipse cx="22" cy="26" rx="24" ry="18" fill="#0A7C3E" opacity="0.08"></ellipse>
+            <ellipse cx="80" cy="42" rx="20" ry="20" fill="#E2571E" opacity="0.09"></ellipse>
+            <ellipse cx="55" cy="60" rx="30" ry="13" fill="#0E8F6E" opacity="0.16"></ellipse>
+            <ellipse cx="50" cy="44" rx="13" ry="7.5" fill="#3FB6BE" opacity="0.32"></ellipse>
+            <path d="M13 18 Q 22 30 33 30 T 52 33 Q 70 34 73 44 T 56 60" fill="none" stroke="#6FA52C" stroke-width="0.7" stroke-dasharray="2.2 2.2"></path>
+            <text x="14" y="9" font-size="2.5" fill="#0A7C3E" font-family="DM Mono,monospace" opacity="0.7" letter-spacing="0.3">KHU TÂM LINH · VĂN HOÁ</text>
+            <text x="70" y="16" font-size="2.5" fill="#E2571E" font-family="DM Mono,monospace" opacity="0.75" letter-spacing="0.3">KHU TRÒ CHƠI</text>
+            <text x="40" y="66" font-size="2.5" fill="#0E7E85" font-family="DM Mono,monospace" opacity="0.85" letter-spacing="0.3">BIỂN TIÊN ĐỒNG</text>
+          </svg>
+          ${routeLine}
+          ${pins}
+        </div>
       </div>
       <div class="exp-legend">
-        <span><span class="sw" style="background:#E2571E"></span>Điểm trong combo</span>
+        <span><span class="sw" style="background:var(--orange)"></span>Điểm trong combo</span>
         <span><span class="sw" style="background:#0E8F6E"></span>Biển Tiên Đồng</span>
-        <span style="margin-left:auto;color:var(--muted)">${ids.length} điểm · không theo thứ tự, tuỳ bạn</span>
       </div>
-      ${sea?'':`<div class="sea-upsell-wrap">
-        <span class="sea-upsell-stamp mono">CHƯA BAO GỒM</span>
-        <div class="sea-upsell">
-          <div class="sea-upsell-stub">
-            <span class="sea-upsell-ic">${lucide('water','currentColor',20)}</span>
-            <span class="sea-upsell-stub-lab mono">Vé<br>nước</span>
-          </div>
-          <div class="sea-upsell-main">
-            <div class="sea-upsell-body">
-              <span class="sea-upsell-eyebrow">Vé bổ sung · Biển Tiên Đồng</span>
-              <span class="sea-upsell-title">Khu này chưa có trong vé của bạn</span>
-              <span class="sea-upsell-sub">Các điểm nước dưới đây chỉ để xem trước 360° — muốn vui chơi ở thực tế cần thêm vé.</span>
-            </div>
-            <button class="sea-upsell-btn" data-act="seaAddExplore" data-id="${c.id}">Thêm Biển Tiên Đồng</button>
-          </div>
-        </div>
-      </div>`}
-      <div class="tiles">${tiles}</div>
-    </div>
+      <div class="exp-ctrls">
+        <button data-act="expCollapse" title="Ẩn/hiện bảng">${lucide('maximize','currentColor',17)}</button>
+        <button data-act="expZoomReset" title="Về mặc định">${lucide('navigation','currentColor',17)}</button>
+        <button data-act="expZoomIn" title="Phóng to" ${z>=2.5?'disabled':''}>${lucide('plus','currentColor',18)}</button>
+        <button data-act="expZoomOut" title="Thu nhỏ" ${z<=1?'disabled':''}>${lucide('minus','currentColor',18)}</button>
+      </div>
+    </main>
   </div>`;
 }
 
