@@ -156,7 +156,7 @@ function seaAddJourney(id){
     if(state.journey) mountJourney();   // remount rebuilds without the note
   },{once:true});
 }
-function seaAddExplore(id){ commitSea(id); toast('Đã thêm vé Biển Tiên Đồng vào '+comboOf(id).name); }
+function seaAddExplore(id){ commitSea(id); patchExploreBody(); toast('Đã thêm vé Biển Tiên Đồng vào '+comboOf(id).name); }
 const reducedMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
 /* select a combo — commit state, then play the tear on the fresh card.
    Committing first means the re-rendered card owns the animation, so its
@@ -200,18 +200,30 @@ function buy(){
 const playlist = j => { const c=comboOf(j.comboId); return c.dest.concat(SEA_DEST); };
 function openPano(id){ setState({vr:{id}}); }
 function closeVR(){ setState({vr:null}); }
+/* Explore is mounted ONCE per open into #exploreHost, then patched in place —
+   so a tab/zoom/route click never rebuilds the whole screen (which replayed the
+   entrance + route animations and caused the jank). Page state behind explore
+   only resyncs on open/close. */
 function openExplore(id){ const cid=id||state.selectedId||state.recId||COMBOS[0].id; const c=comboOf(cid);
-  setState({exploreId:cid,exploreTab:'places',exploreZoom:1,exploreCollapsed:false,
-    exploreFrom:c.dest[0], exploreTo:c.dest[c.dest.length-1]}); }
-function closeExplore(){ setState({exploreId:null}); }
-function expTab(t){ if(state.exploreTab!==t) setState({exploreTab:t}); }
-function expCollapse(){ setState({exploreCollapsed:!state.exploreCollapsed}); }
-function expZoom(d){ const z=Math.min(2.5,Math.max(1,+(state.exploreZoom+d).toFixed(2))); if(z!==state.exploreZoom) setState({exploreZoom:z}); }
-function expZoomReset(){ if(state.exploreZoom!==1) setState({exploreZoom:1}); }
-function expSetFrom(id){ if(id!==state.exploreFrom) setState({exploreFrom:id}); }
-function expSetTo(id){ if(id!==state.exploreTo) setState({exploreTo:id}); }
-function expSwap(){ setState({exploreFrom:state.exploreTo,exploreTo:state.exploreFrom}); }
-function expMyLoc(){ const c=comboOf(state.exploreId); setState({exploreFrom:c.dest[0],exploreTab:'route'}); toast('Đã đặt điểm bắt đầu tại cổng vào'); }
+  const mob=window.matchMedia&&matchMedia('(max-width:860px)').matches;
+  Object.assign(state,{exploreId:cid,exploreTab:'places',exploreZoom:1,exploreCollapsed:mob,  // phones open map-first
+    exploreFrom:c.dest[0], exploreTo:c.dest[c.dest.length-1]});
+  mountExplore(); }
+function closeExplore(){ state.exploreId=null; mountExplore(); render(); }
+function expTab(t){ if(state.exploreTab===t) return; state.exploreTab=t; patchExploreBody(); patchExploreMap(); }
+function expCollapse(){ state.exploreCollapsed=!state.exploreCollapsed;
+  const h=expHost(); if(!h) return;
+  const sc=h.querySelector('.explore'); if(sc) sc.classList.toggle('is-collapsed',state.exploreCollapsed);
+  const side=h.querySelector('.exp-side'); if(side){ side.style.height=''; side.style.maxHeight=''; } }
+function expZoom(d){ const z=Math.min(2.5,Math.max(1,+((state.exploreZoom||1)+d).toFixed(2)));
+  if(z===state.exploreZoom) return; state.exploreZoom=z; applyMapTransform(true); updateZoomBtns(); }
+function expZoomReset(){ if((state.exploreZoom||1)===1 && !expPan.x && !expPan.y) return;
+  state.exploreZoom=1; expPan={x:0,y:0}; applyMapTransform(true); updateZoomBtns(); }
+function expSetFrom(id){ if(id===state.exploreFrom) return; state.exploreFrom=id; patchExploreBody(); patchExploreMap(); }
+function expSetTo(id){ if(id===state.exploreTo) return; state.exploreTo=id; patchExploreBody(); patchExploreMap(); }
+function expSwap(){ const f=state.exploreFrom; state.exploreFrom=state.exploreTo; state.exploreTo=f; patchExploreBody(); patchExploreMap(); }
+function expMyLoc(){ const c=comboOf(state.exploreId); state.exploreFrom=c.dest[0]; state.exploreTab='route';
+  patchExploreBody(); patchExploreMap(); toast('Đã đặt điểm bắt đầu tại cổng vào'); }
 
 /* ===================== WAYFINDING ENGINE =====================
    Reproduces the "Chỉ đường" logic from suoitien.trip360.vn: pick a FROM and
@@ -850,114 +862,68 @@ function viewVR(){
   </div>`;
 }
 
-/* ===================== FREE EXPLORE ===================== */
-function viewExplore(){
-  if(!state.exploreId) return '';
-  const c=comboOf(state.exploreId); const sea=!!state.seaBy[c.id];
-  const ids=c.dest.concat(SEA_DEST);  // always preview the full park, sea included
-  const tab=state.exploreTab||'places';
-  const z=state.exploreZoom||1;
-  const collapsed=!!state.exploreCollapsed;
+/* ===================== FREE EXPLORE =====================
+   Built once per open into #exploreHost, then patched in place (see openExplore).
+   Three small builders feed both the initial mount and the targeted patches. */
+let expPan={x:0,y:0};           // current map pan offset in px (persists across patches)
+const expHost=()=>document.getElementById('exploreHost');
 
-  // wayfinding route (only when the Directions tab is active)
-  const routing=tab==='route';
-  const route=routing?routeBetween(ids,state.exploreFrom,state.exploreTo):null;
+function exploreData(){
+  const c=comboOf(state.exploreId);
+  const ids=c.dest.concat(SEA_DEST);            // always preview the full park
+  const tab=state.exploreTab||'places';
+  const route=tab==='route'?routeBetween(ids,state.exploreFrom,state.exploreTo):null;
+  return {c,ids,tab,route,sea:!!state.seaBy[c.id]};
+}
+
+/* map layer (svg board + route line + numbered pins) — children of .map-inner */
+function exploreMapInnerHTML(){
+  const {ids,route}=exploreData();
   const onPath=new Set(route?route.path:[]);
   const fromId=route?route.path[0]:null, toId=route?route.path[route.path.length-1]:null;
-
-  // map pins — numbered like a real wayfinding board, sea spots tinted teal.
-  // While routing, the from/to pins light up and off-route pins dim back.
   const pins=ids.map((id,i)=>{
-    const d=DEST[id];
-    let mark='';
-    if(route){
-      if(id===fromId) mark=' is-from'; else if(id===toId) mark=' is-to';
-      else if(onPath.has(id)) mark=' is-via'; else mark=' is-dim';
-    }
+    const d=DEST[id]; let mark='';
+    if(route){ if(id===fromId) mark=' is-from'; else if(id===toId) mark=' is-to';
+      else if(onPath.has(id)) mark=' is-via'; else mark=' is-dim'; }
     return `<button class="mappin ${d.sea?'sea':''}${mark}" data-act="portal" data-id="${id}" title="${esc(d.name)}" style="left:${d.mx}%;top:${d.my}%">
-      <span class="head"><i>${i+1}</i></span>
-      <span class="lab">${esc(d.name)}</span>
-    </button>`;
+      <span class="head"><i>${i+1}</i></span><span class="lab">${esc(d.name)}</span></button>`;
   }).join('');
-
-  // route line drawn over the map, aligned to pin coordinates (mx%, my%)
   const routeLine=route?`<svg class="route-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
       <polyline points="${route.path.map(id=>DEST[id].mx+','+DEST[id].my).join(' ')}"
-        fill="none" stroke-width="1.1" stroke-linecap="round"
-        stroke-linejoin="round" stroke-dasharray="2.4 2"/>
+        fill="none" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2.4 2"/>
     </svg>`:'';
+  return `<svg viewBox="0 0 100 68" preserveAspectRatio="none" class="mapsvg">
+      <ellipse cx="22" cy="26" rx="24" ry="18" fill="#0A7C3E" opacity="0.08"></ellipse>
+      <ellipse cx="80" cy="42" rx="20" ry="20" fill="#E2571E" opacity="0.09"></ellipse>
+      <ellipse cx="55" cy="60" rx="30" ry="13" fill="#0E8F6E" opacity="0.16"></ellipse>
+      <ellipse cx="50" cy="44" rx="13" ry="7.5" fill="#3FB6BE" opacity="0.32"></ellipse>
+      <path d="M13 18 Q 22 30 33 30 T 52 33 Q 70 34 73 44 T 56 60" fill="none" stroke="#6FA52C" stroke-width="0.7" stroke-dasharray="2.2 2.2"></path>
+      <text x="14" y="9" font-size="2.5" fill="#0A7C3E" font-family="DM Mono,monospace" opacity="0.7" letter-spacing="0.3">KHU TÂM LINH · VĂN HOÁ</text>
+      <text x="70" y="16" font-size="2.5" fill="#E2571E" font-family="DM Mono,monospace" opacity="0.75" letter-spacing="0.3">KHU TRÒ CHƠI</text>
+      <text x="40" y="66" font-size="2.5" fill="#0E7E85" font-family="DM Mono,monospace" opacity="0.85" letter-spacing="0.3">BIỂN TIÊN ĐỒNG</text>
+    </svg>${routeLine}${pins}`;
+}
 
-  // PLACES tab — scrollable destination list, each row opens a 360° portal
-  const rows=ids.map((id,i)=>{
-    const d=DEST[id];
-    return `<button class="exp-row ${d.sea?'sea':''}" data-act="portal" data-id="${id}">
-      <span class="exp-row-no mono">${i+1}</span>
-      <span class="exp-row-ic">${svgIcon(d.icon,d.sea?'#0E7E85':'#0A7C3E',18)}</span>
-      <span class="exp-row-txt">
-        <span class="exp-row-nm">${esc(d.name)}${d.sea?'<span class="exp-row-tag mono">BIỂN</span>':''}</span>
-        <span class="exp-row-ty">${esc(d.type)}</span>
-      </span>
-      <span class="exp-row-go mono">360° ${lucide('arrow-right','currentColor',13)}</span>
-    </button>`;
-  }).join('');
-
-  // sea up-sell — the same vintage "admit one" coupon used on the home tickets
-  const seaCoupon=`<div class="addon exp-addon" data-act="seaAddExplore" data-id="${c.id}" role="button" tabindex="0" style="--accent:${c.accent}">
-      <span class="addon-inner">
-        <span class="addon-corner tl">❖</span><span class="addon-corner tr">❖</span>
-        <span class="addon-corner bl">❖</span><span class="addon-corner br">❖</span>
-        <span class="addon-side left mono">Vé bổ sung</span>
-        <span class="addon-core">
-          <span class="addon-flour top">✦ ✦ ✦</span>
-          <span class="addon-nm serif">Biển Tiên Đồng</span>
-          <span class="addon-rule"><i></i><span class="mono">Công viên nước</span><i></i></span>
-          <span class="addon-flour bot">+${SEA_DEST.length} điểm · +${fmt(c.seaAdult-c.priceAdult)}</span>
-          <span class="addon-btn mono">
-            <span class="addon-btn-add">＋ Thêm vào vé</span>
-            <span class="addon-btn-on">${lucide('check','currentColor',13)} Đã thêm vào vé</span>
-          </span>
-        </span>
-        <span class="addon-side right mono">Admit one</span>
-      </span>
-    </div>`;
-
-  const placesPanel=`
-    <p class="exp-hint">${lucide('navigation','var(--green)',13)} Chạm một điểm trên bản đồ hoặc trong danh sách để mở ảnh 360°.</p>
-    ${sea?'':seaCoupon}
-    <div class="exp-list">${rows}</div>`;
-
-  // ROUTE tab — a working "Chỉ đường" panel: From/To pickers compute a shortest
-  // walking route across the park (distance, time, turn-by-turn steps).
-  const opt=(sel)=>ids.map(id=>`<option value="${id}" ${id===sel?'selected':''}>${esc(DEST[id].name)}</option>`).join('');
-  const sameEnds=state.exploreFrom===state.exploreTo;
-  const steps=route?route.steps.map((s,i)=>{
-    const t=TURN[s.kind]||TURN.straight, d=DEST[s.id];
-    return `<div class="exp-step ${s.kind}">
-      <span class="exp-step-ic">${lucide(t.ic,'currentColor',15)}</span>
-      <span class="exp-step-txt">
-        <span class="exp-step-lab">${t.lab}${s.kind==='start'||s.kind==='end'?'':' · đi tới'}</span>
-        <span class="exp-step-nm">${esc(d.name)}</span>
-      </span>
-      ${s.meters?`<span class="exp-step-m mono">${s.meters} m</span>`:''}
-    </div>`;
-  }).join('') : '';
-
-  const routePanel=`
-    <div class="exp-route-card">
+/* side body — Places list or Directions panel (inner of .exp-body) */
+function exploreBodyHTML(){
+  const {c,ids,tab,route,sea}=exploreData();
+  if(tab==='route'){
+    const opt=(sel)=>ids.map(id=>`<option value="${id}" ${id===sel?'selected':''}>${esc(DEST[id].name)}</option>`).join('');
+    const sameEnds=state.exploreFrom===state.exploreTo;
+    const steps=route?route.steps.map(s=>{
+      const t=TURN[s.kind]||TURN.straight, d=DEST[s.id];
+      return `<div class="exp-step ${s.kind}"><span class="exp-step-ic">${lucide(t.ic,'currentColor',15)}</span>
+        <span class="exp-step-txt"><span class="exp-step-lab">${t.lab}${s.kind==='start'||s.kind==='end'?'':' · đi tới'}</span>
+        <span class="exp-step-nm">${esc(d.name)}</span></span>
+        ${s.meters?`<span class="exp-step-m mono">${s.meters} m</span>`:''}</div>`;
+    }).join('') : '';
+    return `<div class="exp-route-card">
       <div class="exp-rail"><span class="exp-rail-dot"></span><span class="exp-rail-line"></span><span class="exp-rail-sq"></span></div>
       <div class="exp-fields">
-        <label class="exp-field">
-          <span class="overline">ĐIỂM BẮT ĐẦU · FROM</span>
-          <span class="exp-select">${lucide('chevron-down','currentColor',15)}
-            <select data-act="expSetFrom">${opt(state.exploreFrom)}</select>
-          </span>
-        </label>
-        <label class="exp-field">
-          <span class="overline">ĐIỂM ĐẾN · TO</span>
-          <span class="exp-select">${lucide('chevron-down','currentColor',15)}
-            <select data-act="expSetTo">${opt(state.exploreTo)}</select>
-          </span>
-        </label>
+        <label class="exp-field"><span class="overline">ĐIỂM BẮT ĐẦU · FROM</span>
+          <span class="exp-select">${lucide('chevron-down','currentColor',15)}<select data-act="expSetFrom">${opt(state.exploreFrom)}</select></span></label>
+        <label class="exp-field"><span class="overline">ĐIỂM ĐẾN · TO</span>
+          <span class="exp-select">${lucide('chevron-down','currentColor',15)}<select data-act="expSetTo">${opt(state.exploreTo)}</select></span></label>
       </div>
       <button class="exp-swap" data-act="expSwap" title="Đổi chiều">${lucide('rotate','currentColor',15)}</button>
     </div>
@@ -976,9 +942,50 @@ function viewExplore(){
       <div class="exp-steps-title overline">${lucide('navigation','var(--green)',13)} Chỉ đường từng bước</div>
       <div class="exp-steps">${steps}</div>`
     : `<p class="exp-hint">${sameEnds?'Chọn điểm đến khác với điểm bắt đầu để xem lộ trình.':'Chọn điểm bắt đầu và điểm đến để xem lộ trình.'}</p>`}`;
+  }
+  // PLACES tab — list + sea coupon
+  const rows=ids.map((id,i)=>{
+    const d=DEST[id];
+    return `<button class="exp-row ${d.sea?'sea':''}" data-act="portal" data-id="${id}">
+      <span class="exp-row-no mono">${i+1}</span>
+      <span class="exp-row-ic">${svgIcon(d.icon,d.sea?'#0E7E85':'#0A7C3E',18)}</span>
+      <span class="exp-row-txt">
+        <span class="exp-row-nm">${esc(d.name)}${d.sea?'<span class="exp-row-tag mono">BIỂN</span>':''}</span>
+        <span class="exp-row-ty">${esc(d.type)}</span>
+      </span>
+      <span class="exp-row-go mono">360° ${lucide('arrow-right','currentColor',13)}</span>
+    </button>`;
+  }).join('');
+  const seaCoupon=`<div class="addon exp-addon" data-act="seaAddExplore" data-id="${c.id}" role="button" tabindex="0" style="--accent:${c.accent}">
+      <span class="addon-inner">
+        <span class="addon-corner tl">❖</span><span class="addon-corner tr">❖</span>
+        <span class="addon-corner bl">❖</span><span class="addon-corner br">❖</span>
+        <span class="addon-side left mono">Vé bổ sung</span>
+        <span class="addon-core">
+          <span class="addon-flour top">✦ ✦ ✦</span>
+          <span class="addon-nm serif">Biển Tiên Đồng</span>
+          <span class="addon-rule"><i></i><span class="mono">Công viên nước</span><i></i></span>
+          <span class="addon-flour bot">+${SEA_DEST.length} điểm · +${fmt(c.seaAdult-c.priceAdult)}</span>
+          <span class="addon-btn mono">
+            <span class="addon-btn-add">＋ Thêm vào vé</span>
+            <span class="addon-btn-on">${lucide('check','currentColor',13)} Đã thêm vào vé</span>
+          </span>
+        </span>
+        <span class="addon-side right mono">Admit one</span>
+      </span>
+    </div>`;
+  return `<p class="exp-hint">${lucide('navigation','var(--green)',13)} Chạm một điểm trên bản đồ hoặc trong danh sách để mở ảnh 360°.</p>
+    ${sea?'':seaCoupon}
+    <div class="exp-list">${rows}</div>`;
+}
 
+function viewExplore(){
+  if(!state.exploreId) return '';
+  const {c,ids,tab}=exploreData();
+  const collapsed=!!state.exploreCollapsed, z=state.exploreZoom||1;
   return `<div class="screen explore ${collapsed?'is-collapsed':''}">
     <aside class="exp-side">
+      <div class="exp-handle" title="Kéo để chỉnh độ cao"></div>
       <div class="exp-brand">
         <div class="exp-logo">ST</div>
         <div class="exp-brand-txt">
@@ -995,32 +1002,15 @@ function viewExplore(){
           ${lucide('navigation','currentColor',16)}<span>Lộ trình<small>Directions</small></span>
         </button>
       </div>
-      <div class="exp-body">
-        ${tab==='route'?routePanel:placesPanel}
-      </div>
-      <div class="exp-foot">
-        <span class="mono">${ids.length} điểm · ${esc(c.name)}</span>
-      </div>
+      <div class="exp-body">${exploreBodyHTML()}</div>
+      <div class="exp-foot"><span class="mono">${ids.length} điểm · ${esc(c.name)}</span></div>
     </aside>
 
     <main class="exp-map">
       <button class="exp-close" data-act="closeExplore" title="Đóng">${lucide('x','currentColor',20)}</button>
       <button class="exp-reopen" data-act="expCollapse" title="Mở bảng">${lucide('chevron-right','currentColor',18)}<span>Bảng điều khiển</span></button>
       <div class="mapbox">
-        <div class="map-inner" style="--z:${z}">
-          <svg viewBox="0 0 100 68" preserveAspectRatio="none" class="mapsvg">
-            <ellipse cx="22" cy="26" rx="24" ry="18" fill="#0A7C3E" opacity="0.08"></ellipse>
-            <ellipse cx="80" cy="42" rx="20" ry="20" fill="#E2571E" opacity="0.09"></ellipse>
-            <ellipse cx="55" cy="60" rx="30" ry="13" fill="#0E8F6E" opacity="0.16"></ellipse>
-            <ellipse cx="50" cy="44" rx="13" ry="7.5" fill="#3FB6BE" opacity="0.32"></ellipse>
-            <path d="M13 18 Q 22 30 33 30 T 52 33 Q 70 34 73 44 T 56 60" fill="none" stroke="#6FA52C" stroke-width="0.7" stroke-dasharray="2.2 2.2"></path>
-            <text x="14" y="9" font-size="2.5" fill="#0A7C3E" font-family="DM Mono,monospace" opacity="0.7" letter-spacing="0.3">KHU TÂM LINH · VĂN HOÁ</text>
-            <text x="70" y="16" font-size="2.5" fill="#E2571E" font-family="DM Mono,monospace" opacity="0.75" letter-spacing="0.3">KHU TRÒ CHƠI</text>
-            <text x="40" y="66" font-size="2.5" fill="#0E7E85" font-family="DM Mono,monospace" opacity="0.85" letter-spacing="0.3">BIỂN TIÊN ĐỒNG</text>
-          </svg>
-          ${routeLine}
-          ${pins}
-        </div>
+        <div class="map-inner">${exploreMapInnerHTML()}</div>
       </div>
       <div class="exp-legend">
         <span><span class="sw" style="background:var(--orange)"></span>Điểm trong combo</span>
@@ -1034,6 +1024,107 @@ function viewExplore(){
       </div>
     </main>
   </div>`;
+}
+
+/* ---- mount once / patch in place ---- */
+function mountExplore(){
+  const h=expHost(); if(!h) return;
+  if(!state.exploreId){ h.innerHTML=''; return; }
+  // start centered; on phones nudge up so the lowest pins clear the sheet peek
+  expPan={x:0, y:(window.matchMedia&&matchMedia('(max-width:860px)').matches)?-58:0};
+  h.innerHTML=viewExplore();
+  applyMapTransform(false);
+  initExploreDrag();
+}
+function patchExploreBody(){
+  const h=expHost(); if(!h) return;
+  const body=h.querySelector('.exp-body'); if(body) body.innerHTML=exploreBodyHTML();
+  h.querySelectorAll('.exp-tab').forEach(b=>b.classList.toggle('on', b.dataset.tab===(state.exploreTab||'places')));
+}
+function patchExploreMap(){
+  const h=expHost(); if(!h) return;
+  const inner=h.querySelector('.map-inner'); if(inner){ inner.innerHTML=exploreMapInnerHTML(); applyMapTransform(false); }
+}
+function updateZoomBtns(){
+  const h=expHost(); if(!h) return; const z=state.exploreZoom||1;
+  const zin=h.querySelector('[data-act="expZoomIn"]'), zout=h.querySelector('[data-act="expZoomOut"]');
+  if(zin) zin.disabled=z>=2.5; if(zout) zout.disabled=z<=1;
+}
+/* combine zoom + pan into one transform; clamp pan to the overflow that's
+   actually hidden by the clipping viewport. The map keeps its native aspect and
+   covers the screen (on phones it's wider than the viewport even at z=1), so the
+   viewport is whichever is smaller — the map card or the visible stage. */
+function applyMapTransform(animate){
+  const h=expHost(); if(!h) return;
+  const inner=h.querySelector('.map-inner'), box=h.querySelector('.mapbox'), vp=h.querySelector('.exp-map');
+  if(!inner||!box||!vp) return;
+  const z=state.exploreZoom||1;
+  const cw=box.offsetWidth*z, ch=box.offsetHeight*z;
+  const vw=Math.min(box.offsetWidth, vp.clientWidth), vh=Math.min(box.offsetHeight, vp.clientHeight);
+  // on phones the bottom sheet overlaps the map, so give extra vertical slack to
+  // let the lowest pins be dragged up clear of the sheet
+  const slackY=(vp.clientWidth<=860)?vp.clientHeight*0.5:0;
+  const maxX=Math.max(0,(cw-vw)/2), maxY=Math.max(0,(ch-vh)/2)+slackY;
+  expPan.x=Math.max(-maxX,Math.min(maxX,expPan.x));
+  expPan.y=Math.max(-maxY,Math.min(maxY,expPan.y));
+  inner.style.transition=animate?'transform .28s cubic-bezier(.4,0,.2,1)':'none';
+  inner.style.transform=`translate(${expPan.x}px,${expPan.y}px) scale(${z})`;
+}
+/* drag-to-pan the map + drag-the-handle to resize the bottom sheet (mobile) */
+function initExploreDrag(){
+  const h=expHost(); if(!h) return;
+  const box=h.querySelector('.mapbox'), inner=h.querySelector('.map-inner');
+  const sc=h.querySelector('.explore'), side=h.querySelector('.exp-side'), handle=h.querySelector('.exp-handle');
+
+  if(box && inner){
+    let on=false, moved=false, sx=0, sy=0, ox=0, oy=0;
+    box.style.touchAction='none';
+    box.addEventListener('pointerdown',e=>{
+      on=true; moved=false; sx=e.clientX; sy=e.clientY; ox=expPan.x; oy=expPan.y;
+      try{ box.setPointerCapture(e.pointerId); }catch(_){}
+    });
+    box.addEventListener('pointermove',e=>{
+      if(!on) return;
+      const dx=e.clientX-sx, dy=e.clientY-sy;
+      if(!moved && Math.abs(dx)+Math.abs(dy)>5){ moved=true; box.classList.add('panning'); }
+      if(moved){ expPan.x=ox+dx; expPan.y=oy+dy; applyMapTransform(false); }
+    });
+    const end=()=>{ if(!on) return; on=false; box.classList.remove('panning');
+      if(moved){ // swallow the click that would otherwise fire on a pin after a drag
+        const swallow=ev=>{ ev.stopPropagation(); ev.preventDefault(); };
+        box.addEventListener('click',swallow,{capture:true,once:true});
+        setTimeout(()=>box.removeEventListener('click',swallow,true),60);
+        applyMapTransform(true);
+      }
+    };
+    box.addEventListener('pointerup',end);
+    box.addEventListener('pointercancel',end);
+  }
+
+  if(handle && side && sc){
+    let on=false, sy=0, sh=0;
+    handle.addEventListener('pointerdown',e=>{
+      if(!matchMedia('(max-width:860px)').matches) return;
+      on=true; sy=e.clientY; sh=side.getBoundingClientRect().height;
+      side.style.transition='none';
+      if(state.exploreCollapsed){ state.exploreCollapsed=false; sc.classList.remove('is-collapsed'); }
+      try{ handle.setPointerCapture(e.pointerId); }catch(_){}
+    });
+    handle.addEventListener('pointermove',e=>{
+      if(!on) return;
+      const max=window.innerHeight*0.9, min=96;
+      const nh=Math.max(min,Math.min(max, sh+(sy-e.clientY)));
+      side.style.maxHeight='none'; side.style.height=nh+'px';
+    });
+    const end=()=>{ if(!on) return; on=false; side.style.transition='';
+      if(side.getBoundingClientRect().height<150){     // flicked down → collapse to peek
+        side.style.height=''; side.style.maxHeight='';
+        state.exploreCollapsed=true; sc.classList.add('is-collapsed');
+      }
+    };
+    handle.addEventListener('pointerup',end);
+    handle.addEventListener('pointercancel',end);
+  }
 }
 
 /* ===================== JOURNEY 360 ===================== */
@@ -1285,7 +1376,7 @@ function render(){
   const qb=document.getElementById('quizBody'); if(qb) qb.innerHTML=viewQuizBody();
   const cg=document.getElementById('comboGrid'); if(cg) cg.innerHTML=renderCombos();
   const bs=document.getElementById('buyslot'); if(bs){ bs.innerHTML=viewBuybar(); measureChrome(); }
-  const ov=document.getElementById('overlays'); if(ov) ov.innerHTML=viewSheet()+viewExplore()+viewVR()+viewToast();
+  const ov=document.getElementById('overlays'); if(ov) ov.innerHTML=viewSheet()+viewVR()+viewToast();
 }
 
 /* keep hero height = viewport minus the sticky topbar & fixed buy bar */
@@ -1328,6 +1419,7 @@ function mount(){
     viewTopbar() +
     `<div style="overflow-x:hidden">` + viewHero() + viewCombosShell() + `</div>` +
     `<div id="buyslot"></div>` +
+    `<div id="exploreHost"></div>` +
     `<div id="overlays"></div>` +
     `<div id="journeyHost"></div>` +
     `<div id="mapModal"></div>`;

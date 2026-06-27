@@ -819,8 +819,11 @@ svg{vertical-align:-0.15em}
 
 .mapbox{position:relative;width:100%;max-width:1180px;aspect-ratio:100/68;border-radius:20px;overflow:hidden;
   border:1.5px solid rgba(255,255,255,.6);box-shadow:0 30px 60px -30px rgba(13,35,26,.6);
-  background:linear-gradient(160deg,#E8F0DD,#DFEAD7)}
-.map-inner{position:absolute;inset:0;transform:scale(var(--z,1));transform-origin:center center;transition:transform .28s cubic-bezier(.4,0,.2,1)}
+  background:linear-gradient(160deg,#E8F0DD,#DFEAD7);cursor:grab;touch-action:none}
+.mapbox.panning{cursor:grabbing}
+.mapbox.panning .mappin{cursor:grabbing}
+.map-inner{position:absolute;inset:0;transform-origin:center center;will-change:transform}
+.exp-handle{display:none}
 .mapsvg{position:absolute;inset:0;width:100%;height:100%}
 .route-svg{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;
   filter:drop-shadow(0 1px 1px rgba(13,35,26,.25));animation:routeIn .4s ease both}
@@ -868,15 +871,56 @@ svg{vertical-align:-0.15em}
 .exp-ctrls button:hover:not(:disabled){border-color:var(--green);color:var(--green);transform:translateY(-1px)}
 .exp-ctrls button:disabled{opacity:.4;cursor:not-allowed}
 
+/* ===== phone: full-screen map with the panel as a draggable bottom sheet ===== */
 @media(max-width:860px){
-  .explore{flex-direction:column}
-  .exp-side{flex:0 0 auto;max-height:46vh;border-right:none;border-bottom:1.5px solid var(--line)}
-  .explore.is-collapsed .exp-side{margin-left:0;margin-top:calc(-46vh - 2px)}
-  .exp-map{flex:1;min-height:0}
-  .mapbox{aspect-ratio:auto;height:100%}
-  .exp-close{width:40px;height:40px;top:12px;right:12px}
-  .explore.is-collapsed .exp-reopen{top:12px;left:12px}
+  .explore{display:block;flex-direction:column}
+
+  /* map covers the screen WITHOUT distortion: it keeps its 100/68 aspect, fills
+     by height and overflows the width — drag left/right to see the rest. The
+     stage clips; the map card itself must not clip its overflow. */
+  .exp-map{position:absolute;inset:0;padding:0;overflow:hidden}
+  /* explicit cover sizing keeps the 100/68 aspect exactly (no squish) and always
+     fills the viewport in any orientation; the larger axis overflows for panning */
+  .mapbox{flex:none;max-width:none;border:none;border-radius:0;box-shadow:none;overflow:visible;
+    width:max(100vw, calc(100vh * 100 / 68));
+    height:max(100vh, calc(100vw * 68 / 100))}
+  .exp-close{top:12px;right:12px;width:42px;height:42px;z-index:8}
+  .exp-reopen{display:none!important}
+
+  /* control panel → bottom sheet */
+  .exp-side{position:absolute;left:0;right:0;bottom:0;top:auto;flex:0 0 auto;z-index:7;
+    max-height:76vh;border:none;border-radius:22px 22px 0 0;
+    box-shadow:0 -18px 44px -20px rgba(13,35,26,.55);
+    transition:transform .34s cubic-bezier(.4,0,.2,1);will-change:transform}
+  /* draggable grab bar — press & drag to resize the sheet to any height */
+  .exp-handle{display:block;position:relative;flex:none;height:24px;cursor:ns-resize;touch-action:none}
+  .exp-handle::before{content:"";position:absolute;top:9px;left:50%;transform:translateX(-50%);
+    width:44px;height:5px;border-radius:99px;background:#C4D4C4;transition:background .15s}
+  .exp-handle:active::before{background:var(--green)}
+  /* collapsed → slide the sheet down to a peek showing the handle + brand row */
+  .explore.is-collapsed .exp-side{margin-left:0;transform:translateY(calc(100% - 96px))}
+  .exp-collapse svg{transform:rotate(-90deg);transition:transform .22s}
+  .explore.is-collapsed .exp-collapse svg{transform:rotate(90deg)}
+
+  /* bigger pins + always-on name labels for touch (no hover) */
+  .mappin .head{width:40px;height:40px;font-size:16px;border-width:2.5px}
+  .mappin.is-from .head,.mappin.is-to .head{width:44px;height:44px}
+  .mappin .lab{opacity:1;transform:none;font-size:11.5px;font-weight:700;line-height:1.2;
+    white-space:normal;overflow:visible;text-overflow:clip;text-align:center;
+    width:max-content;max-width:120px;padding:3px 8px;margin-top:3px}
+
+  /* zoom controls float top-right, under the close button (clear of the sheet) */
+  .exp-ctrls{top:64px;right:14px;bottom:auto;z-index:6}
+  .exp-ctrls button{width:40px;height:40px}
+  .exp-ctrls button:nth-child(1),.exp-ctrls button:nth-child(2){display:none}
+
   .exp-legend{display:none}
+  .exp-foot{display:none}
+}
+@media(max-width:420px){
+  .exp-tab small{display:none}
+  .exp-tab{padding:10px 6px}
+  .exp-side{max-height:80vh}
 }
 
 /* ---- journey ---- */
