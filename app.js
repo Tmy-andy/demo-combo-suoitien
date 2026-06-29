@@ -535,7 +535,7 @@ function viewQuizBody(){
     const seaYes=state.answers[2]!=null?QUIZ[2].opts[state.answers[2]].sea:false;
     let reason='';
     if(who&&mood) reason='Vì bạn đi cùng '+who.who+' và muốn '+mood.mood+(seaYes?', kèm Biển Tiên Đồng':'')+', nên ';
-    reason+=c.name+' là lựa chọn hợp nhất cho hành trình cõi tiên của bạn.';
+    reason+=c.name+' là lựa chọn hợp nhất cho hành trình Suối Tiên của bạn.';
     const p=priceOf(c,!!state.seaBy[c.id]);
     result=`<div class="result">
       <span class="stamp">GỢI Ý CHO BẠN</span>
@@ -581,7 +581,7 @@ function viewHero(){
     <div class="hero-wrap">
       <div>
         <span class="overline eyebrow"><span class="bar"></span>Vé Combo · Hành trình 360°</span>
-        <h1 class="serif">Để chúng tôi gợi ý<br>hành trình <em>cõi tiên</em><br>hợp với bạn</h1>
+        <h1 class="serif">Để chúng tôi gợi ý<br>hành trình <em>Suối Tiên</em><br>hợp với bạn</h1>
         <p class="lede">Trả lời <b>3 câu hỏi nhỏ</b> để nhận combo phù hợp kèm lý do — rồi <b>xem trước từng điểm đến bằng VR 360°</b> trước khi mua. Hành trình tự động hoặc khám phá tự do, tuỳ bạn.</p>
         <div class="statstrip">
           <div class="cell"><div class="num serif" data-target="17">0</div><div class="lab">điểm đến<br>360°</div></div>
@@ -784,7 +784,7 @@ const MODE_IC = { cinematic:'film', map:'map', family:'users' };
 /* short, human caption per destination type — gives the preview a voice
    instead of exposing engine internals. Falls back to a generic line. */
 const VR_LINE = {
-  'Cổng chào':'Bước qua cổng, cõi tiên mở ra trước mắt.',
+  'Cổng chào':'Bước qua cổng, xứ thần tiên mở ra trước mắt.',
   'Văn hoá':'Mái ngói, hoa văn, tiếng trống hội — kéo nhẹ để nhìn quanh.',
   'Tâm linh':'Khói trầm vương trong nắng sớm. Hãy đứng lại một nhịp.',
   'Cảnh quan':'Gió mát, tầm nhìn mở. Xoay 360° để thu trọn khung cảnh.',
