@@ -471,26 +471,28 @@ svg{vertical-align:-0.15em}
        showing a short label over the −/value/+ control
      • total + "Mua vé" share the last row: price on the left, button right */
 @media(max-width:560px){
-  .buybar-wrap{padding:9px 14px 11px;gap:8px;align-items:stretch}
+  .buybar-wrap{padding:8px 12px 10px;gap:8px;align-items:stretch;overflow:hidden}
   /* combo info is redundant with the card above — hide it, keep only the
      "chưa chọn combo" hint when nothing is selected */
   .buy-info{display:none}
   .buy-empty{flex:1 1 100%;min-width:0;font-size:12.5px;max-width:none;text-align:center}
 
   /* buy-right is the whole compact stack of two short rows */
-  .buy-right{flex:1 1 100%;flex-direction:column;gap:8px;margin-left:0;align-items:stretch;flex-wrap:nowrap}
+  .buy-right{flex:1 1 100%;min-width:0;flex-direction:column;gap:8px;margin-left:0;align-items:stretch;flex-wrap:nowrap}
 
   /* row 1 — two equal stepper pills, label LEFT and −/value/+ control RIGHT,
-     so each reads like a clean labelled counter (not a cramped stack) */
-  .stepper-row{display:flex;gap:8px}
-  .stepper{flex:1;min-width:0;align-items:center;justify-content:space-between;gap:8px;
+     so each reads like a clean labelled counter (not a cramped stack).
+     flex-wrap is the safety net: on very narrow phones the pills drop to two
+     stacked rows instead of pushing the second pill's "+" off-screen. */
+  .stepper-row{display:flex;flex-wrap:wrap;gap:7px;min-width:0}
+  .stepper{flex:1 1 132px;min-width:0;align-items:center;justify-content:space-between;gap:7px;
     background:rgba(252,248,238,.05);border:1px solid rgba(252,248,238,.12);
-    border-radius:12px;padding:8px 10px 8px 13px}
-  .stepper .cap{min-width:0;font-size:12px;color:#CFE0C7;font-weight:500;letter-spacing:.01em;
+    border-radius:12px;padding:7px 8px 7px 11px}
+  .stepper .cap{min-width:0;flex:1 1 auto;font-size:11.5px;color:#CFE0C7;font-weight:500;letter-spacing:.01em;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .stepper .step-ctrl{flex:none;gap:8px}
-  .stepper button{width:30px;height:30px;flex:none;font-size:17px}
-  .stepper input.v{width:36px;min-width:0;font-size:16px}
+  .stepper .step-ctrl{flex:none;gap:6px}
+  .stepper button{width:28px;height:28px;flex:none;font-size:16px}
+  .stepper input.v{width:30px;min-width:0;font-size:15px}
 
   /* row 2 — price + button in one line */
   .buy-cta{display:flex;align-items:center;gap:10px;justify-content:space-between}

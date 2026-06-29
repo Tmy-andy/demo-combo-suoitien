@@ -1,0 +1,2 @@
+- [No auto-open files](no-auto-open-files.md) — don't run start/open; user has a live preview
+- [/commit mes shortcut](commit-mes-shortcut.md) — on '/commit mes' return one commit message line, don't auto-commit
